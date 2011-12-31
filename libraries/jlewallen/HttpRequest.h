@@ -173,7 +173,7 @@ const char *HttpRequest::parameter(const char *name) {
         }
       }
       else {
-        size_t value_length = (p - start_of_value) + 1;
+        size_t value_length = (p - start_of_value) + 0;
         char *value = allocate(value_length);
         if (value == NULL) {
           return NULL;
