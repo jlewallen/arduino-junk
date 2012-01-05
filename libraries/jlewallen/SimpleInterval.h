@@ -5,16 +5,16 @@
 
 class SimpleInterval {
   private:
-    int interval;
-    int previous;
+    long interval;
+    long previous;
 
   public:
-    SimpleInterval(int interval) : interval(interval) {
+    SimpleInterval(long interval) : interval(interval) {
       previous = millis();
     }
 
     boolean tick() {
-      int now = millis();
+      long now = millis();
       if (now - previous > interval) {
         previous = now;
         return true;
