@@ -31,7 +31,6 @@ class ShiftRegisters {
       }
       digitalWrite(rclkPin, HIGH);
     }
-  
 };
 
 #endif
