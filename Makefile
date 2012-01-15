@@ -1,4 +1,4 @@
-SUBDIRS = blink i2c_1 max7219 switch_1
+SUBDIRS = blink i2c_1 max7219 switch_1 httpd
 
 all:
 	@for i in $(SUBDIRS); do \

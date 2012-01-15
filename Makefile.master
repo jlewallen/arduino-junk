@@ -74,6 +74,10 @@ MON_SPEED ?= 9600
 PORT ?= $(wildcard /dev/tty.usb*)
 BOARD ?= atmega328
 
+# Default libraries/Includes
+INC_DIRS = $(addprefix $(ARD_HOME)/libraries/, $(SYSTEM_LIBS)) $(addprefix ../libraries/, $(USER_LIBS))
+LIB_DIRS = $(addprefix $(ARD_HOME)/libraries/, $(SYSTEM_LIBS)) $(addprefix ../libraries/, $(USER_LIBS))
+
 ### Nothing below here should require editing. ###
 
 # Check for the required definitions.
@@ -129,8 +133,7 @@ CXX_FLAGS = $(C_CXX_FLAGS)
 #     no os preamble, use function calls in prologues.
 # http://gcc.gnu.org/onlinedocs/gcc-4.3.5/gcc/
 # http://www.tty1.net/blog/2008-04-29-avr-gcc-optimisations_en.html
-OPT_FLAGS = \
-     -Os -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums \
+OPT_FLAGS = -Os -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums \
     -ffunction-sections -fdata-sections -Wl,--gc-sections,--relax \
     -fno-inline-small-functions -fno-tree-scev-cprop -fno-exceptions \
     -ffreestanding -mcall-prologues
