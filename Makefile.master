@@ -67,9 +67,11 @@ ARD_BIN ?= /usr/local/CrossPack-AVR/bin
 AVRDUDE ?= $(ARD_HOME)/hardware/tools/avr/bin/avrdude
 AVRDUDE_CONF ?= $(ARD_HOME)/hardware/tools/avr/etc/avrdude.conf
 PROGRAMMER ?= stk500v1
-MON_SPEED ?= 57600
-MON_CMD ?= picocom
-PORT ?= /dev/tty.usbserial-A60061a3
+# PROGRAMMER ?= arduino
+MON_CMD ?= screen
+MON_SPEED ?= 9600
+
+PORT ?= $(wildcard /dev/tty.usb*)
 BOARD ?= atmega328
 
 ### Nothing below here should require editing. ###
@@ -254,11 +256,10 @@ $(IMAGE).hex : $(ARD_AR_OBJ) $(LIB_AR_OBJ) $(SKT_AR_OBJ) $(SKT_PDE_OBJ)
 
 # START:makemods
 upload : all
-	- pkill -f '$(MON_CMD).*$(PORT)'
+	- kill -9 `ps -axo pid,args | grep -i 'tty.usb' | grep -v 'grep' | awk '{ print $1 }'` #- pkill -f '$(MON_CMD).*$(PORT)'
 	- sleep 1
-	- stty -f $(PORT) hupcl
-	- $(AVRDUDE) -V -C$(AVRDUDE_CONF) -p$(MCU) -c$(PROGRAMMER) \
-	  -P$(PORT) -b$(UPLOAD_SPEED) -D -Uflash:w:$(IMAGE).hex:i
+	- stty -F $(PORT) hupcl
+	- $(AVRDUDE) -V -C$(AVRDUDE_CONF) -p$(MCU) -c$(PROGRAMMER) -P$(PORT) -b$(UPLOAD_SPEED) -D -Uflash:w:$(IMAGE).hex:i
 
 monitor :
 	$(MON_CMD) $(PORT) $(MON_SPEED)
