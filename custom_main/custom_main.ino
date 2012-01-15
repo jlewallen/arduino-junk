@@ -1,20 +1,16 @@
 #include <Arduino.h>
+#include <Pins.h>
 
 void setup() {
-	Serial.println("Setup");
+	pinMode(5, OUTPUT);
+	digital_write<5>(HIGH);
 }
 
 void loop() {
-	Serial.println("Tick");
-	delay(1000);
 }
 
 int main(void) {
 	init();
-
-	Serial.begin(9600);
-	Serial.println("Hello");
-
 	setup();
 
 	for (;;) {
