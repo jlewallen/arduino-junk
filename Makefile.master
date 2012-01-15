@@ -250,14 +250,19 @@ $(IMAGE).hex : $(ARD_AR_OBJ) $(LIB_AR_OBJ) $(SKT_AR_OBJ) $(SKT_PDE_OBJ)
 	$(SIZE) $(IMAGE).hex
 
 # START:makemods
+monitor_kill:
+	- kill -9 `ps -axo pid,args | grep -i 'tty.usb' | grep -v 'grep' | awk '{ print $$1 }'` #- pkill -f '$(MON_CMD).*$(PORT)'
+
 upload : all
-	- kill -9 `ps -axo pid,args | grep -i 'tty.usb' | grep -v 'grep' | awk '{ print $1 }'` #- pkill -f '$(MON_CMD).*$(PORT)'
+	- kill -9 `ps -axo pid,args | grep -i 'tty.usb' | grep -v 'grep' | awk '{ print $$1 }'` #- pkill -f '$(MON_CMD).*$(PORT)'
 	- sleep 1
 	- stty -F $(PORT) hupcl
 	- $(AVRDUDE) -V -C$(AVRDUDE_CONF) -p$(MCU) -c$(PROGRAMMER) -P$(PORT) -b$(UPLOAD_SPEED) -D -Uflash:w:$(IMAGE).hex:i
 
 monitor :
-	$(MON_CMD) $(PORT) $(MON_SPEED)
+	- $(MON_CMD) $(PORT) $(MON_SPEED)
+	- reset
+	- stty sane
 # END:makemods
 
 upload_monitor : upload monitor
