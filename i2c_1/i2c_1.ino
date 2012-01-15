@@ -9,10 +9,6 @@ typedef struct _message_t {
 
 static message_t *queue = NULL;
 
-void blink(int16_t times) {
-  blink(times, 250, 250);
-}
-
 void blink(int16_t times, int16_t onTime, int16_t offTime) {
   for (int i = 0; i < times; ++i) {
     digitalWrite(13, HIGH);
@@ -20,6 +16,10 @@ void blink(int16_t times, int16_t onTime, int16_t offTime) {
     digitalWrite(13, LOW);
     delay(offTime);
   }
+}
+
+void blink(int16_t times) {
+  blink(times, 250, 250);
 }
 
 void setup() {

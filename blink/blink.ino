@@ -1,10 +1,12 @@
+#define PIN 13
+
 void setup() {
-  pinMode(13, OUTPUT);
+  pinMode(PIN, OUTPUT);
 }
 
 void loop() {
-  digitalWrite(13, HIGH);
-  delay(1000);
-  digitalWrite(13, LOW);
-  delay(1000);
+  digitalWrite(PIN, HIGH);
+  delay(500);
+  digitalWrite(PIN, LOW);
+  delay(500);
 }
