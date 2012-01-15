@@ -1,6 +1,6 @@
 include ../Makefile.env
 
-LIBS = 
+LIBS = Wire Wire/utility
 INC_DIRS = $(addprefix $(ARD_HOME)/libraries/, $(LIBS))
 LIB_DIRS = $(addprefix $(ARD_HOME)/libraries/, $(LIBS))
 

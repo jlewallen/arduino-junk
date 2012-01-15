@@ -1,6 +1,6 @@
 include ../Makefile.env
 
-LIBS = 
+LIBS =
 INC_DIRS = $(addprefix $(ARD_HOME)/libraries/, $(LIBS))
 LIB_DIRS = $(addprefix $(ARD_HOME)/libraries/, $(LIBS))
 
