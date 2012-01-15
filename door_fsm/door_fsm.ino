@@ -34,7 +34,7 @@ class UserFunctionTrigger : public Trigger {
 
 class TimeInCurrentStateTrigger : public Trigger {
   private:
-    long time;
+    unsigned long time;
     
   public:
     TimeInCurrentStateTrigger(long time) : time(time) { }
@@ -82,6 +82,22 @@ byte subnet[] = { 255, 255, 255, 0 };
 byte dns[] = { 192, 168, 0, 1 };
 static EthernetClient client;
 long lastConnection = 0;
+
+extern void waitingEnter();
+extern void waitingUpdate();
+extern void motorEnter();
+extern void motorUpdate();
+extern void motorLeave();
+extern void doorOpenEnter();
+extern void doorOpenUpdate();
+extern void doorOpenLeave();
+extern void doorClosedEnter();
+extern void doorClosedUpdate();
+extern void doorOpenLeave();
+extern void errorEnter();
+extern void errorUpdate();
+extern boolean whenDoorClose();
+extern boolean whenDoorOpen();
 
 State waitingState(waitingEnter, waitingUpdate);
 State motorState(motorEnter, motorUpdate, motorLeave);
