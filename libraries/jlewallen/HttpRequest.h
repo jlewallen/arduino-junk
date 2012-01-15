@@ -35,8 +35,8 @@ class HttpRequest {
     char *free;
     
   private:
-    EthernetClient client;
     char buffer[HTTP_MAXIMUM_REQUEST_LENGTH];
+    EthernetClient client;
     size_t bytes;
     char *url;
 
@@ -102,7 +102,7 @@ class HttpRequest {
     virtual void respondWithDebugInformation();
 };
 
-HttpRequest::HttpRequest(EthernetClient &client) : bytes(0), client(client), url(NULL) {
+HttpRequest::HttpRequest(EthernetClient &client) : client(client), bytes(0), url(NULL) {
   memset(buffer, 0, HTTP_MAXIMUM_REQUEST_LENGTH);
   memset(work_buffer, 0, HTTP_MAXIMUM_WORK_BUFFER_LENGTH);
   free = work_buffer;
@@ -120,7 +120,7 @@ EthernetClient &HttpRequest::ethernetClient() {
 boolean HttpRequest::tick() {
   boolean finished = false;
   if (client.available()) {
-    char c = client.read();
+    int16_t c = client.read();
     if (c != -1) {
       if (bytes >= HTTP_MAXIMUM_REQUEST_LENGTH) {
         client.println("Out of memory.");

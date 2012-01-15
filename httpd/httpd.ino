@@ -4,8 +4,9 @@
 
 static byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 static byte ip[] = { 10, 0, 0, 2 };
+static byte dns[] = { 10, 0, 0, 1 };
 static byte gateway[] = { 10, 0, 0, 1 };
-static byte subnet[] = { 255, 255, 0, 0 };
+static byte network[] = { 255, 255, 0, 0 };
 static EthernetServer server(80);
 
 class MyWebRequest : public HttpRequest {
@@ -30,7 +31,7 @@ void setup() {
   pinMode(8, OUTPUT);
   pinMode(9, OUTPUT);
   
-  Ethernet.begin(mac, ip);
+  Ethernet.begin(mac, ip, dns, gateway, network);
   server.begin();
 }
 
