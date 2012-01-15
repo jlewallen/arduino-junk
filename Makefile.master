@@ -249,8 +249,11 @@ $(IMAGE).hex : $(ARD_AR_OBJ) $(LIB_AR_OBJ) $(SKT_AR_OBJ) $(SKT_PDE_OBJ)
 	$(OBJDUMP) -h -S $(IMAGE).elf | $(CXXFILT) -t > $(IMAGE).lst
 	$(SIZE) $(IMAGE).hex
 
+size :
+	$(SIZE) $(IMAGE).hex
+
 # START:makemods
-monitor_kill:
+monitor_kill :
 	- kill -9 `ps -axo pid,args | grep -i 'tty.usb' | grep -v 'grep' | awk '{ print $$1 }'` #- pkill -f '$(MON_CMD).*$(PORT)'
 
 upload : all
