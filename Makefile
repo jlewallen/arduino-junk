@@ -1,9 +1,7 @@
-SUBDIRS = blink i2c_1 max7219 switch_1 httpd watchdog custom_main glow
-
 all:
-	@for i in $(SUBDIRS); do \
-	(cd $$i && $(MAKE) all); done
+	@for i in */Makefile; do \
+	(echo for `dirname $$i`; cd `dirname $$i` && $(MAKE) all); done
 
 clean:
-	@for i in $(SUBDIRS); do \
-	(cd $$i && $(MAKE) clean); done
+	@for i in */Makefile; do \
+	(echo for `dirname $$i`; cd `dirname $$i` && $(MAKE) clean); done
