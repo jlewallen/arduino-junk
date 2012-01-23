@@ -61,7 +61,7 @@
 #
 
 # Global configuration.
-ARD_REV ?= 0022
+ARD_REV ?= 100
 ARD_HOME ?= /Applications/Arduino.app/Contents/Resources/Java
 ARD_BIN ?= /usr/local/CrossPack-AVR/bin
 AVRDUDE ?= $(ARD_HOME)/hardware/tools/avr/bin/avrdude
