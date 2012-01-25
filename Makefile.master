@@ -83,10 +83,10 @@ LIB_DIRS = $(addprefix $(ARD_HOME)/libraries/, $(SYSTEM_LIBS)) $(addprefix ../li
 # Check for the required definitions.
 
 ifndef BOARD
-    $(error $$(BOARD) not defined)
+    $(error $$(BOARD) missing)
 endif
 ifndef PORT
-    $(error $$(PORT) not defined)
+    $(error $$(PORT) missing)
 endif
 
 # Version-specific settings
