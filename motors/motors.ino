@@ -1,6 +1,7 @@
 /**
  *
  */
+#include <Arduino.h>
 #include <printf.h>
 
 // #define SERIAL_DEBUG
@@ -148,6 +149,14 @@ public:
   PlatformMotionController(MotorController &l, MotorController &r) : l(&l), r(&r) {
   }
 
+  MotorController *getLeft() {
+    return l;
+  }
+
+  MotorController *getRight() {
+    return r;
+  }
+
   boolean isMovingBackward() {
     return !isMovingForward();
   }
@@ -230,20 +239,20 @@ private:
 
   typedef struct {
     byte pin;
-    long accumulator;
+    int16_t accumulator;
   } reading_t;
 
   PlatformMotionController *platform;
   long previous;
   State state;
-  long samples;
-  reading_t motor1;
-  reading_t motor2;
+  int16_t samples;
+  reading_t leftMotor;
+  reading_t rightMotor;
 
 public:
-  ESC(PlatformMotionController &platform, byte p1, byte p2) : platform(&platform), previous(0), state(Running) {
-    motor1.pin = p1;
-    motor2.pin = p2;
+  ESC(PlatformMotionController &platform, byte leftPin, byte rightPin) : platform(&platform), previous(0), state(Running) {
+    leftMotor.pin = leftPin;
+    rightMotor.pin = rightPin;
   }
 
   void begin() {
@@ -265,23 +274,48 @@ public:
     case Draining:
       if (now - previous > 2000) {
         state = Measuring;
-        motor1.accumulator = 0;
-        motor2.accumulator = 0;
+        leftMotor.accumulator = 0;
+        rightMotor.accumulator = 0;
         samples = 0;
         previous = now;
       }
       break;
     case Measuring:
-      motor1.accumulator += analogRead(motor1.pin);
-      motor2.accumulator += analogRead(motor2.pin);
+      leftMotor.accumulator += analogRead(leftMotor.pin);
+      rightMotor.accumulator += analogRead(rightMotor.pin);
       samples++;
       if (now - previous > 2000) {
-        Serial.print(motor1.accumulator / samples);
+        int16_t target = 50;
+        int16_t leftRate = (int16_t)(leftMotor.accumulator / samples);
+        int16_t rightRate = (int16_t)(rightMotor.accumulator / samples);
+
+        int16_t leftDifference = target - leftRate;
+        int16_t leftSpeed = platform->getLeft()->speed();
+        byte newLeftSpeed = constrain(leftSpeed + leftDifference / 2, 0, 230);
+        platform->getLeft()->speed(true, newLeftSpeed);
+
+        int16_t rightDifference = target - rightRate;
+        int16_t rightSpeed = platform->getRight()->speed();
+        byte newRightSpeed = constrain(rightSpeed + rightDifference / 2, 0, 230);
+        platform->getRight()->speed(true, newRightSpeed);
+
+        Serial.print(leftRate);
         Serial.print(" ");
-        Serial.print(motor2.accumulator / samples);
+        Serial.print(rightRate);
         Serial.print(" ");
-        Serial.print(motor1.accumulator / samples - motor2.accumulator / samples);
+        Serial.print(leftDifference);
+        Serial.print(" ");
+        Serial.print(leftSpeed);
+        Serial.print(" ");
+        Serial.print(newLeftSpeed);
+        Serial.print(" ");
+        Serial.print(rightDifference);
+        Serial.print(" ");
+        Serial.print(rightSpeed);
+        Serial.print(" ");
+        Serial.print(newRightSpeed);
         Serial.println("");
+
         platform->resume();
         state = Running;
         previous = now;
