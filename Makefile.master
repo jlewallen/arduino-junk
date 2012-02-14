@@ -264,7 +264,7 @@ upload : all
 	- $(AVRDUDE) -V -C$(AVRDUDE_CONF) -p$(MCU) -c$(PROGRAMMER) -P$(PORT) -b$(UPLOAD_SPEED) -D -Uflash:w:$(IMAGE).hex:i
 
 monitor :
-	- $(MON_CMD) $(PORT) $(MON_SPEED)
+	- $(MON_CMD) -L $(PORT) $(MON_SPEED)
 	- reset
 	- stty sane
 # END:makemods
