@@ -3,18 +3,17 @@
  */
 #include <Arduino.h>
 #include <printf.h>
+#include <Servo.h>
+#include <Servicable.h>
+#include "MotorController.h"
+#include "ESC.h"
+#include "IMU.h"
+#include "Eyes.h"
+#include "Navigator.h"
 
-// #define SERIAL_DEBUG
-
-#define DEFAULT_SPEED 200
-#define SWITCH_1_PIN  9
-#define SWITCH_2_PIN 10
-
-class Servicable {
-public:
-  virtual ~Servicable () { }
-  virtual void service() = 0;
-};
+#define DEFAULT_SPEED 255
+#define SWITCH_1_PIN 2
+#define SWITCH_2_PIN 3
 
 class Latch : public Servicable {
 private:
@@ -44,335 +43,18 @@ public:
   }
 };
 
-class MotorController {
-private:
-  boolean enabled;
-  boolean forwardDirection;
-  byte speedPin;
-  byte pin1;
-  byte pin2;
-  byte value;
-
-public:
-  MotorController(byte speedPin, byte pin1, byte pin2) :
-    enabled(false),
-    forwardDirection(false),
-    speedPin(speedPin),
-    pin1(pin1),
-    pin2(pin2),
-    value(0) {
-  }
-
-  boolean isMovingBackward() {
-    return !isMovingForward();
-  }
-
-  boolean isMovingForward() {
-    return forwardDirection;
-  }
-
-  boolean isEnabled() {
-    return enabled;
-  }
-
-  void forward(byte speed) {
-    direction(true);
-  }
-
-  void backward(byte speed) {
-    direction(false);
-  }
-
-  void debug(const char *name) {
-    printf("%s %s %s %d\n\r", name, enabled ? "on" : "off", forwardDirection ? "fwd" : "back", value);
-  }
-
-  void begin() {
-    stop();
-    pinMode(speedPin, OUTPUT);
-    pinMode(pin1, OUTPUT); 
-    pinMode(pin2, OUTPUT); 
-  }
-
-  void direction(boolean f) {
-    forwardDirection = f;
-    if (forwardDirection) {
-      digitalWrite(pin1, LOW);
-      digitalWrite(pin2, HIGH);
-    }
-    else {
-      digitalWrite(pin1, HIGH);
-      digitalWrite(pin2, LOW);
-    }
-  }
-
-  void speed(boolean e, byte s) {
-    enabled = e;
-    value = s;
-    if (enabled) {
-      analogWrite(speedPin, value);
-    }
-    else {
-      analogWrite(speedPin, 0);
-    }
-  }
-
-  byte speed() {
-    return value;
-  }
-
-  void start() {
-    speed(true, value);
-  }
-
-  void toggle() {
-    speed(!enabled, value);
-  }
-
-  void stop() {
-    speed(false, value);
-  }
-
-  void disable() {
-  }
-
-  void enable() {
-  }
-};
-
-class PlatformMotionController : public Servicable {
-private:
-  MotorController *l;
-  MotorController *r;
-
-public:
-  PlatformMotionController(MotorController &l, MotorController &r) : l(&l), r(&r) {
-  }
-
-  MotorController *getLeft() {
-    return l;
-  }
-
-  MotorController *getRight() {
-    return r;
-  }
-
-  boolean isMovingBackward() {
-    return !isMovingForward();
-  }
-
-  boolean isMovingForward() {
-    return l->isEnabled() && l->isMovingForward() && r->isEnabled() && r->isMovingForward();
-  }
-
-  byte getSpeed() {
-    if (l->speed() == r->speed()) {
-      return l->speed();
-    }
-    return 0;
-  }
-
-  void turn(boolean direction, byte s) {
-    l->stop();
-    r->stop();
-
-    l->direction(direction);
-    r->direction(!direction);
-
-    l->speed(false, s);
-    r->speed(false, s);
-
-    l->start();
-    r->start();
-  }
-
-  void adjust(boolean direction, byte s, byte diff) {
-    l->stop();
-    r->stop();
-
-    l->direction(direction);
-    r->direction(direction);
-
-    l->speed(false, s);
-    r->speed(false, s);
-
-    l->start();
-    r->start();
-  }
-
-  void stop() {
-    l->stop();
-    r->stop();
-  }
-
-  void pause() {
-    l->stop();
-    r->stop();
-  }
-
-  void resume() {
-    l->start();
-    r->start();
-  }
-
-  void service() {
-  }
-
-  void begin() {
-    l->begin();
-    r->begin();
-  }
-
-  void debug() {
-    l->debug("L");
-    r->debug("R");
-  }
-};
-
-class ESC : public Servicable {
-private:
-  enum State {
-    Running,
-    Draining,
-    Measuring
-  };
-
-  typedef struct {
-    byte pin;
-    int16_t accumulator;
-  } reading_t;
-
-  PlatformMotionController *platform;
-  long previous;
-  State state;
-  int16_t samples;
-  reading_t leftMotor;
-  reading_t rightMotor;
-
-public:
-  ESC(PlatformMotionController &platform, byte leftPin, byte rightPin) : platform(&platform), previous(0), state(Running) {
-    leftMotor.pin = leftPin;
-    rightMotor.pin = rightPin;
-  }
-
-  void begin() {
-  }
-
-  void service() {
-    long now = micros();
-    switch (state) {
-    case Running:
-      if (!platform->isMovingForward()) {
-        return;
-      }
-      if (now - previous > 100000) {
-        platform->pause();
-        state = Draining;
-        previous = now;
-      }
-      break;
-    case Draining:
-      if (now - previous > 2000) {
-        state = Measuring;
-        leftMotor.accumulator = 0;
-        rightMotor.accumulator = 0;
-        samples = 0;
-        previous = now;
-      }
-      break;
-    case Measuring:
-      leftMotor.accumulator += analogRead(leftMotor.pin);
-      rightMotor.accumulator += analogRead(rightMotor.pin);
-      samples++;
-      if (now - previous > 2000) {
-        int16_t target = 50;
-        int16_t leftRate = (int16_t)(leftMotor.accumulator / samples);
-        int16_t rightRate = (int16_t)(rightMotor.accumulator / samples);
-
-        int16_t leftDifference = target - leftRate;
-        int16_t leftSpeed = platform->getLeft()->speed();
-        byte newLeftSpeed = constrain(leftSpeed + leftDifference / 2, 0, 230);
-        platform->getLeft()->speed(true, newLeftSpeed);
-
-        int16_t rightDifference = target - rightRate;
-        int16_t rightSpeed = platform->getRight()->speed();
-        byte newRightSpeed = constrain(rightSpeed + rightDifference / 2, 0, 230);
-        platform->getRight()->speed(true, newRightSpeed);
-
-        Serial.print(leftRate);
-        Serial.print(" ");
-        Serial.print(rightRate);
-        Serial.print(" ");
-        Serial.print(leftDifference);
-        Serial.print(" ");
-        Serial.print(leftSpeed);
-        Serial.print(" ");
-        Serial.print(newLeftSpeed);
-        Serial.print(" ");
-        Serial.print(rightDifference);
-        Serial.print(" ");
-        Serial.print(rightSpeed);
-        Serial.print(" ");
-        Serial.print(newRightSpeed);
-        Serial.println("");
-
-        platform->resume();
-        state = Running;
-        previous = now;
-      }
-      break;
-    }
-  }
-};
-
-class OpticalEncoders : public Servicable {
-public:
-  static long encoderOne;
-  static long encoderTwo;
-
-  static void encode0() {
-    encoderOne++;
-  }
-
-  static void encode1() {
-    encoderTwo++;
-  }
-
-  void begin() {
-    encoderOne = 0;
-    encoderTwo = 0;
-
-    pinMode(0, INPUT);
-    pinMode(1, INPUT);
-
-    attachInterrupt(0, encode0, FALLING);
-    attachInterrupt(1, encode1, FALLING);
-  }
-
-  void service() {
-    static long lastOne = 0;
-    static long lastTwo = 0;
-    if (lastOne != encoderOne || lastTwo != encoderTwo) {
-      if (lastOne != encoderOne) printf("1-%5d ", encoderOne - lastOne); else printf("1-      ");
-      if (lastTwo != encoderTwo) printf("2-%5d ", encoderTwo - lastTwo); else printf("2-      ");
-      printf("\n\r");
-      lastOne = encoderOne;
-      lastTwo = encoderTwo;
-    }
-  }
-};
-
 class SerialController : public Servicable {
 private:
   PlatformMotionController *platform;
   ESC *esc;
+  Navigator *navigator;
 
 public:
-  SerialController(PlatformMotionController &platform, ESC &esc) : platform(&platform), esc(&esc) {
+  SerialController(PlatformMotionController &platform, ESC &esc, Navigator &navigator) : platform(&platform), esc(&esc), navigator(&navigator) {
   }
 
   void begin() {
-    Serial.begin(19200);
+    Serial.begin(115200);
     printf_begin();
   }
 
@@ -404,26 +86,19 @@ public:
         platform->stop();
         break;
       case 'z':
-        printf("%d", platform->getSpeed() + 10);
-        printf("Faster\n\r");
-        platform->adjust(true, platform->getSpeed() + 10, 0);
         break;
       case 'x':
-        printf("%d", platform->getSpeed() + 10);
-        printf("Slower\n\r");
-        platform->adjust(true, platform->getSpeed() - 10, 0);
         break;
       case 'q':
         printf("Forward\n\r");
-        platform->adjust(true, DEFAULT_SPEED, 0);
+        navigator->search();
         break;
       case 'w':
         printf("Backward\n\r");
-        platform->adjust(false, DEFAULT_SPEED, 0);
         break;
       case '.':
         printf("Stop\n\r");
-        platform->stop();
+        navigator->stop();
         break;
       }
     }
@@ -434,66 +109,69 @@ class ButtonsController : public Servicable {
 private:
   PlatformMotionController *platform;
   ESC *esc;
+  Navigator *navigator;
   Latch button1;
   Latch button2;
 
 public:
-  ButtonsController(PlatformMotionController &platform, ESC &esc) : platform(&platform), esc(&esc), button1(SWITCH_1_PIN), button2(SWITCH_2_PIN) {
+  ButtonsController(PlatformMotionController &platform, ESC &esc, Navigator &navigator) : platform(&platform), esc(&esc), navigator(&navigator), button1(SWITCH_1_PIN), button2(SWITCH_2_PIN) {
   }
 
   void begin() {
   }
 
   void service() {
-    if (digitalRead(12) == LOW) {
-      if (platform->isMovingForward()) {
-        printf("Object detected, stop\n\r");
-        platform->stop();
-      }
-    }
-
     if (button1.goneLow()) {
-      if (platform->isMovingForward()) {
-        platform->stop();
+      if (navigator->isMoving()) {
+        printf("Switch #1, stop\n\r");
+        navigator->stop();
       }
       else {
-        printf("Forward\n\r");
-        platform->adjust(true, DEFAULT_SPEED, 0);
+        printf("Switch #1, search\n\r");
+        navigator->search();
       }
     }
 
     if (button2.goneLow()) {
-      if (platform->isMovingBackward()) {
-        platform->stop();
+      if (navigator->isMoving()) {
+        printf("Switch #2, stop\n\r");
+        // platform->stop();
       }
       else {
-        printf("Backward\n\r");
-        platform->adjust(false, DEFAULT_SPEED, 0);
+        printf("Switch #2, nothing\n\r");
       }
     }
   }
 };
 
-static MotorController leftMotor(11, 4, 5);
-static MotorController rightMotor(6, 7, 8);
+static MotorController rightMotor(11, 4, 5);
+static MotorController leftMotor(6, 7, 8);
+static IMU imu;
 static PlatformMotionController platform(leftMotor, rightMotor);
 static ESC esc(platform, 0, 1);
-static SerialController serialController(platform, esc);
-static ButtonsController buttonsController(platform, esc);
+static Eyes eyes(12, 9);
+static Navigator navigator(platform, esc, eyes);
+static SerialController serialController(platform, esc, navigator);
+static ButtonsController buttonsController(platform, esc, navigator);
 
 void setup() {
   serialController.begin();
   buttonsController.begin();
   esc.begin();
+  eyes.begin();
   platform.begin();
   serialController.ready();
+  imu.begin();
 }
 
 void loop() {
+  imu.service();
   serialController.service();
   buttonsController.service();
   platform.service();
   esc.service();
+  eyes.service();
+  navigator.service();
   #if defined(SERIAL_DEBUG)
   platform.debug();
   #endif
