@@ -54,7 +54,7 @@ public:
   }
 
   void begin() {
-    Serial.begin(115200);
+    Serial.begin(57600);
     printf_begin();
   }
 
@@ -86,6 +86,18 @@ public:
         platform->stop();
         break;
       case 'z':
+        break;
+      case 'g':
+        printf("Nudge Forward\n\r");
+        platform->adjust(true, DEFAULT_SPEED);
+        delay(500);
+        platform->stop();
+        break;
+      case 'h':
+        printf("Nudge Backward\n\r");
+        platform->adjust(false, DEFAULT_SPEED);
+        delay(500);
+        platform->stop();
         break;
       case 'x':
         break;
@@ -149,10 +161,11 @@ static MotorController leftMotor(6, 7, 8);
 static IMU imu;
 static PlatformMotionController platform(leftMotor, rightMotor);
 static ESC esc(platform, 0, 1);
-static Eyes eyes(12, 9);
-static Navigator navigator(platform, esc, eyes);
+static Navigator navigator(platform, esc, imu);
+static Eyes eyes(12, 9, navigator);
 static SerialController serialController(platform, esc, navigator);
 static ButtonsController buttonsController(platform, esc, navigator);
+static uint32_t previousPlatformDebug;
 
 void setup() {
   serialController.begin();
@@ -162,6 +175,8 @@ void setup() {
   platform.begin();
   serialController.ready();
   imu.begin();
+
+  previousPlatformDebug = millis();
 }
 
 void loop() {
@@ -172,8 +187,13 @@ void loop() {
   esc.service();
   eyes.service();
   navigator.service();
+
+  // #define SERIAL_DEBUG
   #if defined(SERIAL_DEBUG)
-  platform.debug();
+  if (millis() - previousPlatformDebug > 1000) {
+    platform.debug();
+    previousPlatformDebug = millis();
+  }
   #endif
 }
 

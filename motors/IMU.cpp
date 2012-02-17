@@ -1,5 +1,7 @@
 #include "IMU.h"
 
+// #define IMU_LOGGING
+
 const int16_t IMU::sensorSigns[9] = { 1, 1, 1, -1, -1, -1, 1, 1, 1 }; // x,y,z - gyro, accelerometer, magnetometer
 
 IMU::IMU() : dt(0.02), heading(0), timer(0), debuggingTimer(0), timerOld(0), counter(0) {
@@ -237,7 +239,9 @@ void IMU::service() {
     normalize();
     driftCorrection();
     eulerAngles();
+    #if defined(IMU_LOGGING)
     print();
+    #endif
   }
 }
 
