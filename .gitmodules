@@ -1,0 +1,15 @@
+[submodule "MinIMU-9-Arduino-AHRS"]
+	path = MinIMU-9-Arduino-AHRS
+	url = https://github.com/pololu/MinIMU-9-Arduino-AHRS.git
+[submodule "libraries/Arduino-PID-Library"]
+	path = libraries/Arduino-PID-Library
+	url = https://github.com/br3ttb/Arduino-PID-Library.git
+[submodule "libraries/RF24Network"]
+	path = libraries/RF24Network
+	url = git://github.com/maniacbug/RF24Network.git
+[submodule "libraries/LSM303"]
+	path = libraries/LSM303
+	url = git://github.com/pololu/LSM303.git
+[submodule "libraries/L3G4200D"]
+	path = libraries/L3G4200D
+	url = git://github.com/pololu/L3G4200D.git
