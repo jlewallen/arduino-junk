@@ -8,7 +8,7 @@ IMU::IMU() : dt(0.02), heading(0), timer(0), debuggingTimer(0), timerOld(0), cou
 }
 
 void IMU::initialize() {
-  printf("IMU: Initializing...\n\r");
+  DPRINTF("IMU: Initializing...\n\r");
   
   ourGyro.writeReg(L3G4200D_CTRL_REG1, 0x0F); // normal power mode, all axes enabled, 100 Hz
   ourGyro.writeReg(L3G4200D_CTRL_REG4, 0x20); // 2000 dps full scale
@@ -20,7 +20,7 @@ void IMU::initialize() {
 }
 
 void IMU::calibrate() {
-  printf("IMU: Calibrating...\n\r");
+  DPRINTF("IMU: Calibrating...\n\r");
 
   memset(dataOffset, 0, sizeof(dataOffset));
 
@@ -31,11 +31,11 @@ void IMU::calibrate() {
     readAccelerometer();
     for (byte y = 0; y < 6; y++)
       dataOffset[y] += data[y];
-    printf(".");
+    DPRINTF(".");
     delay(30);
   }
 
-  printf("\n\r");
+  DPRINTF("\n\r");
   for (byte y = 0; y < 6; y++)
     dataOffset[y] /= 32;
   
@@ -177,38 +177,40 @@ void IMU::eulerAngles() {
 }
 
 void IMU::print() {
+  #if defined(IMU_LOGGING)
   if (millis() - debuggingTimer < 200) {
     return;
   }
   debuggingTimer  = millis();
-  printf("IMU:");
-  printf("%10lu ", timer);
-  printf("% 6.3f ", TO_DEG(roll));
-  printf("% 6.3f ", TO_DEG(pitch));
-  printf("% 6.3f ", TO_DEG(yaw));
-  printf("G % 6d ", data[0]);
-  printf("% 6d ", data[1]);
-  printf("% 6d ", data[2]);  
-  printf("A % 6d ", data[3]);
-  printf("% 6d ", data[4]);
-  printf("% 6d ", data[5]);
-  printf("M % 6.5f ", magnetometerCorrected[0]);
-  printf("% 6.5f ", magnetometerCorrected[1]);
-  printf("% 6.5f ", magnetometerCorrected[2]);
-  printf("% 6.5f ", TO_DEG(heading));
-  printf("\n\r");
+  DPRINTF("IMU:");
+  DPRINTF("%10lu ", timer);
+  DPRINTF("% 6.3f ", TO_DEG(roll));
+  DPRINTF("% 6.3f ", TO_DEG(pitch));
+  DPRINTF("% 6.3f ", TO_DEG(yaw));
+  DPRINTF("G % 6d ", data[0]);
+  DPRINTF("% 6d ", data[1]);
+  DPRINTF("% 6d ", data[2]);  
+  DPRINTF("A % 6d ", data[3]);
+  DPRINTF("% 6d ", data[4]);
+  DPRINTF("% 6d ", data[5]);
+  DPRINTF("M % 6.5f ", magnetometerCorrected[0]);
+  DPRINTF("% 6.5f ", magnetometerCorrected[1]);
+  DPRINTF("% 6.5f ", magnetometerCorrected[2]);
+  DPRINTF("% 6.5f ", TO_DEG(heading));
+  DPRINTF("\n\r");
+  #endif
 }
 
 void IMU::begin() {
   Wire.begin();
 
-  printf("IMU: Pausing...\n\r");
+  DPRINTF("IMU: Pausing...\n\r");
   delay(1500);
 
   initialize();
   calibrate();
 
-  printf("IMU: Ready\n\r");
+  DPRINTF("IMU: Ready\n\r");
 
   timer = millis();
 }

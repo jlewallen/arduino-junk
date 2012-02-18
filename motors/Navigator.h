@@ -17,6 +17,8 @@ private:
     Stopped,
     Searching,
     Avoiding,
+    Looking,
+    Waiting,
     Clearing
   } state_t;
 
@@ -24,17 +26,18 @@ private:
   ESC *esc;
   PID *pid;
   IMU *imu;
+  Eyes *eyes;
   state_t state;
   state_t nextState;
   uint32_t enteredAt;
-
   double difference;
   double desiredHeading;
   double actualHeading;
   uint32_t debugged;
+  uint16_t waitingFor;
 
 public:
-  Navigator(PlatformMotionController &platform, ESC &esc, IMU &imu);
+  Navigator(PlatformMotionController &platform, ESC &esc, IMU &imu, Eyes &eyes);
   boolean isMoving();
   void begin();
   void search();

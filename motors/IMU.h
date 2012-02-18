@@ -10,6 +10,7 @@
 #include <LSM303.h>
 #include "MathLibrary.h"
 #include "Servicable.h"
+#include "Debuggable.h"
 
 #define GRAVITY      256  // 1G in the raw data coming from the accelerometer 
 #define TO_RAD(x)    ((x) * 0.01745329252)  // *pi/180

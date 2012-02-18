@@ -63,7 +63,7 @@ void ESC::adjust() {
   byte newRightSpeed = constrain(rightSpeed + rightDifference / 2, 0, 255);
   platform->getRight()->speed(newRightSpeed);
 
-  printf("%3d %3d %3d %3d, %3d %3d %3d %3d, %2d\r\n",
+  DPRINTF("%3d %3d %3d %3d, %3d %3d %3d %3d, %2d\r\n",
     leftRate, leftDifference, leftSpeed, newLeftSpeed,
     rightRate, rightDifference, rightSpeed, newRightSpeed,
     newRightSpeed - newLeftSpeed

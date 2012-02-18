@@ -30,7 +30,7 @@ void MotorController::backward(byte speed) {
 }
 
 void MotorController::debug(const char *name) {
-  printf("%s %s %s %d\n\r", name, enabled ? "on" : "off", forwardDirection ? "fwd" : "back", value);
+  DPRINTF("%s %s %s %d\n\r", name, enabled ? "on" : "off", forwardDirection ? "fwd" : "back", value);
 }
 
 void MotorController::begin() {

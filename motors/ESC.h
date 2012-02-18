@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "Servicable.h"
+#include "Debuggable.h"
 
 class PlatformMotionController;
 
@@ -30,8 +31,8 @@ private:
 
 public:
   ESC(PlatformMotionController &platform, byte leftPin, byte rightPin);
-  void begin();
   void setTargetSpeeds(uint16_t left, uint16_t right);
+  void begin();
   void service();
   void adjust();
 };

@@ -11,7 +11,7 @@
 #include "Eyes.h"
 #include "Navigator.h"
 
-#define DEFAULT_SPEED 255
+#define DEFAULT_SPEED 200
 #define SWITCH_1_PIN 2
 #define SWITCH_2_PIN 3
 
@@ -48,9 +48,10 @@ private:
   PlatformMotionController *platform;
   ESC *esc;
   Navigator *navigator;
+  Eyes *eyes;
 
 public:
-  SerialController(PlatformMotionController &platform, ESC &esc, Navigator &navigator) : platform(&platform), esc(&esc), navigator(&navigator) {
+  SerialController(PlatformMotionController &platform, ESC &esc, Navigator &navigator, Eyes &eyes) : platform(&platform), esc(&esc), navigator(&navigator), eyes(&eyes) {
   }
 
   void begin() {
@@ -75,17 +76,15 @@ public:
         break;
       case 'a':
         printf("Nudge Left\n\r");
-        platform->turn(true, DEFAULT_SPEED);
+        platform->turn(false, DEFAULT_SPEED);
         delay(600);
         platform->stop();
         break;
       case 's':
         printf("Nudge Right\n\r");
-        platform->turn(false, DEFAULT_SPEED);
+        platform->turn(true, DEFAULT_SPEED);
         delay(600);
         platform->stop();
-        break;
-      case 'z':
         break;
       case 'g':
         printf("Nudge Forward\n\r");
@@ -99,7 +98,11 @@ public:
         delay(500);
         platform->stop();
         break;
-      case 'x':
+      case 'z':
+        eyes->lookNext();
+        break;
+      case 'c':
+        eyes->lookForward();
         break;
       case 'q':
         printf("Forward\n\r");
@@ -161,9 +164,9 @@ static MotorController leftMotor(6, 7, 8);
 static IMU imu;
 static PlatformMotionController platform(leftMotor, rightMotor);
 static ESC esc(platform, 0, 1);
-static Navigator navigator(platform, esc, imu);
-static Eyes eyes(12, 9, navigator);
-static SerialController serialController(platform, esc, navigator);
+static Eyes eyes(12, 9);
+static Navigator navigator(platform, esc, imu, eyes);
+static SerialController serialController(platform, esc, navigator, eyes);
 static ButtonsController buttonsController(platform, esc, navigator);
 static uint32_t previousPlatformDebug;
 
@@ -175,7 +178,6 @@ void setup() {
   platform.begin();
   serialController.ready();
   imu.begin();
-
   previousPlatformDebug = millis();
 }
 

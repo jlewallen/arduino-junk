@@ -9,23 +9,49 @@
 #define DISTANCE_PROXIMITY        10
 #define DISTANCE_FROM_VOLTAGE(v)  4192.936 * pow((v), -0.935) - 3.937;
 
-static uint8_t states[] = {
-   82,  82, 82, 82,
-   50,  50,
-   82,  82, 82, 82,
-  110, 110
+uint8_t Eyes::eyeDirections[] = {
+  FORWARD,
+  RIGHT,
+  LEFT
 };
 
-Eyes::Eyes(byte detectorPin, byte servoPin, Navigator &navigator)
-  : navigator(&navigator), detectorPin(detectorPin), servoPin(servoPin), distancePin(2), state(Starting), previousUpdate(0), previousChange(0), index(0) {
+Eyes::Eyes(byte detectorPin, byte servoPin)
+  : detectorPin(detectorPin), servoPin(servoPin), distancePin(2), state(Starting), previousUpdate(0), previousChange(0), index(0) {
 }
 
 void Eyes::begin() {
   servo.attach(servoPin);
   pinMode(detectorPin, INPUT);
+  nextState = Scanning;
+  lookForward();
+}
+
+boolean Eyes::didChangedState() {
+  return changedState;
+}
+
+Eyes::state_t Eyes::getState() {
+  return state;
+}
+
+uint8_t Eyes::getLookDirection() {
+  return index;
+}
+
+void Eyes::lookForward() {
+  servo.write(eyeDirections[index = 0]);
+  printf("Eyes: Forward\n\r");
+}
+
+void Eyes::lookNext() { 
+  index = ((index + 1) % sizeof(eyeDirections));
+  servo.write(eyeDirections[index]);
+  printf("Eyes: %d\n\r", index);
 }
 
 void Eyes::service() {
+  changedState = false;
+
   uint32_t now = millis();
   if (now - previousUpdate < UPDATE_TIME) {
     return;
@@ -33,10 +59,9 @@ void Eyes::service() {
   previousUpdate = now;
 
   distance = DISTANCE_FROM_VOLTAGE(analogRead(distancePin));
-  boolean entered = state != nextState;
-  if (entered) {
+  changedState = state != nextState;
+  if (changedState) {
     previousChange = now;
-    previousLog = now;
     state = nextState;
   }
 
@@ -45,15 +70,15 @@ void Eyes::service() {
     nextState = Scanning;
     break;
   case Scanning:
-    if (entered) printf("Eyes: Scanning\n\r");
+    if (changedState) DPRINTF("Eyes: Scanning\n\r");
     if (distance < DISTANCE_PROXIMITY) {
       obstacleDistance = -1;
       nextState = Found;
     }
     break;
   case Found: {
-    if (entered) printf("Eyes: Found\n\r");
     boolean blocked = updateObstacle();
+    if (changedState) DPRINTF("Eyes: Found %f\n\r", obstacleDistance);
     if (!blocked) {
       nextState = Scanning;
     }
@@ -63,9 +88,8 @@ void Eyes::service() {
     break;
   }
   case Alert: {
-    if (entered) {
-      navigator->stop();
-      printf("Eyes: Alert\n\r");
+    if (changedState) {
+      DPRINTF("Eyes: Alert %f\n\r", obstacleDistance);
     }
     boolean blocked = updateObstacle();
     if (!blocked) {
@@ -77,7 +101,7 @@ void Eyes::service() {
     break;
   }
   case Lost: {
-    if (entered) printf("Eyes: Lost\n\r");
+    if (changedState) DPRINTF("Eyes: Lost\n\r");
     boolean blocked = updateObstacle();
     if (blocked) {
       nextState = Alert;
@@ -95,13 +119,6 @@ boolean Eyes::updateObstacle() {
     obstacleDistance = distance;
   }
   double difference = fabs(distance - obstacleDistance);
-  /*
-  uint32_t now = millis();
-  if (now - previousLog > 100) {
-    printf("Eyes: %f %f %f\n\r", obstacleDistance, distance, difference);
-    previousLog = now;
-  }
-  */
   return difference < DISTANCE_HYSTERESIS && distance <= DISTANCE_PROXIMITY + DISTANCE_HYSTERESIS;
 }
 

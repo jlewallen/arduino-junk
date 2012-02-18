@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "Servicable.h"
+#include "Debuggable.h"
 
 class MotorController {
 private:
@@ -46,6 +47,7 @@ public:
   boolean isMovingBackward();
   boolean isMovingForward();
   boolean isMoving();
+  // void execute(platform_command_t *command);
   byte getSpeed();
   void direction(boolean left, boolean right);
   void turn(boolean direction, byte s);
@@ -57,5 +59,16 @@ public:
   void begin();
   void debug();
 };
+
+typedef struct {
+  boolean direction;
+  byte speed;
+} motor_command_t;
+
+typedef struct {
+  motor_command_t l;
+  motor_command_t r;
+  uint16_t duration;
+} platform_command_t;
 
 #endif

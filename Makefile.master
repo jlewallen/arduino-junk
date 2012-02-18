@@ -148,7 +148,7 @@ ARD_CXX_OBJ = $(patsubst %.cpp,%.o,$(notdir $(ARD_CXX_SRC)))
 ARD_LIB = arduino
 ARD_AR = $(BUILD_DIR)/lib$(ARD_LIB).a
 ARD_AR_OBJ = $(ARD_AR)($(ARD_C_OBJ) $(ARD_CXX_OBJ))
-ARD_LD_FLAG = -l$(ARD_LIB)
+ARD_LD_FLAG = -l$(ARD_LIB) -Wl,-Map,$(BUILD_DIR)/sketch.map 
 
 # Workaround for http://gcc.gnu.org/bugzilla/show_bug.cgi?id=34734
 $(ARD_AR)(Tone.o) : CXX_FLAGS += -w
