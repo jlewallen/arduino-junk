@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include "Servicable.h"
 #include "Debuggable.h"
+#include "MotorController.h"
 
 class PlatformMotionController;
 
@@ -18,23 +19,26 @@ private:
   typedef struct {
     byte pin;
     int16_t accumulator;
-  } reading_t;
+    uint16_t target;
+  } motor_t;
 
   PlatformMotionController *platform;
   uint32_t previous;
   State state;
   uint16_t samples;
-  reading_t leftMotor;
-  uint16_t leftTarget;
-  reading_t rightMotor;
-  uint16_t rightTarget;
+  motor_t motorA;
+  motor_t motorB;
+  platform_command_t command;
 
 public:
-  ESC(PlatformMotionController &platform, byte leftPin, byte rightPin);
-  void setTargetSpeeds(uint16_t left, uint16_t right);
+  ESC(PlatformMotionController &platform, byte pinA, byte pinB);
+  void configure(uint16_t a, uint16_t b);
   void begin();
   void service();
   void adjust();
+  void disable() {
+    configure(0, 0);
+  }
 };
 
 #endif

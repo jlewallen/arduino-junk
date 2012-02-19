@@ -11,7 +11,6 @@
 #include "Eyes.h"
 #include "Navigator.h"
 
-#define DEFAULT_SPEED 200
 #define SWITCH_1_PIN 2
 #define SWITCH_2_PIN 3
 
@@ -66,37 +65,21 @@ public:
   void service() {
     if (Serial.available() > 0) {
       switch (Serial.read()) {
-      case 'e':
-        printf("Left\n\r");
-        platform->turn(true, DEFAULT_SPEED);
-        break;
-      case 'r':
-        printf("Right\n\r");
-        platform->turn(false, DEFAULT_SPEED);
-        break;
       case 'a':
         printf("Nudge Left\n\r");
-        platform->turn(false, DEFAULT_SPEED);
-        delay(600);
-        platform->stop();
+        platform->execute(&Left, 600);
         break;
       case 's':
         printf("Nudge Right\n\r");
-        platform->turn(true, DEFAULT_SPEED);
-        delay(600);
-        platform->stop();
+        platform->execute(&Right, 600);
         break;
       case 'g':
         printf("Nudge Forward\n\r");
-        platform->adjust(true, DEFAULT_SPEED);
-        delay(500);
-        platform->stop();
+        platform->execute(&Forward, 500);
         break;
       case 'h':
         printf("Nudge Backward\n\r");
-        platform->adjust(false, DEFAULT_SPEED);
-        delay(500);
-        platform->stop();
+        platform->execute(&Backward, 1000);
         break;
       case 'z':
         eyes->lookNext();
@@ -150,7 +133,6 @@ public:
     if (button2.goneLow()) {
       if (navigator->isMoving()) {
         printf("Switch #2, stop\n\r");
-        // platform->stop();
       }
       else {
         printf("Switch #2, nothing\n\r");

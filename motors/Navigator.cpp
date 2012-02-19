@@ -1,27 +1,25 @@
 #include <PID_v1.h>
+#include "Common.h"
 #include "Navigator.h"
 #include "MotorController.h"
 #include "ESC.h"
 #include "IMU.h"
 #include "Eyes.h"
 
-uint8_t Eyes::eyeDirections[] = {
-  FORWARD,
-  RIGHT,
-  LEFT
-};
+#define LOOK_DURATION 2000
+#define TURN_DURATION 1200 
 
 Navigator::Navigator(PlatformMotionController &platform, ESC &esc, IMU &imu, Eyes &eyes)
   : platform(&platform), esc(&esc), imu(&imu), eyes(&eyes), state(Stopped), nextState(Starting), enteredAt(0) {
     difference = 0;
     actualHeading = 0;
     desiredHeading = 0;
-    pid = new PID(&actualHeading, &difference, &desiredHeading, 40, 0, 20, DIRECT);
-    pid->SetMode(AUTOMATIC);
+    pid = NULL;
+    memcpy(&command, &Forward, sizeof(platform_command_t));
 }
 
 boolean Navigator::isMoving() {
-  return state == Searching || state == Avoiding;
+  return state == Searching;
 }
 
 void Navigator::begin() {
@@ -42,7 +40,7 @@ void Navigator::service() {
   }
   state = nextState;
 
-  if (eyes->didChangedState()) {
+  if (platform->isMoving() && eyes->didChangedState()) {
     switch (eyes->getState()) {
     case Eyes::Starting: {
       break;
@@ -57,9 +55,10 @@ void Navigator::service() {
       break;
     }
     case Eyes::Alert: {
+      esc->disable();
+      platform->stop();
       eyes->lookNext();
-      waitingFor = 2000;
-      nextState = Waiting;
+      pause(Looking, LOOK_DURATION);
       break;
     }
     }
@@ -69,68 +68,77 @@ void Navigator::service() {
   case Starting:
     break;
   case Stopped:
-    if (entered) DPRINTF("Nav: Stopping\n\r");
-    platform->stop();
+    if (entered) {
+      DPRINTF("Nav: Stopping\n\r");
+      esc->disable();
+      platform->stop();
+    }
     break;
   case Searching:
     if (entered) {
       DPRINTF("Nav: Searching\n\r");
-      esc->setTargetSpeeds(150, 150);
-      platform->direction(true, true);
-      platform->resume();
-      desiredHeading = imu->getHeading();
+      esc->configure(150, 150);
+      platform->execute(&command);
+      actualHeading = desiredHeading = imu->getHeading();
+      difference = 0;
+      delete pid;
+      pid = new PID(&actualHeading, &difference, &desiredHeading, 40, 0, 20, MANUAL);
+      pid->SetMode(AUTOMATIC);
     }
 
-    if (millis() - debugged > 500) {
+    if (millis() - lastCorrectedHeading > 500) {
       actualHeading = imu->getHeading();
       pid->Compute();
       DPRINTF("Nav: %f %f %f\n\r", desiredHeading, actualHeading, difference);
-      esc->setTargetSpeeds(150 - difference, 150 + difference);
-      debugged = millis();
+      esc->configure(150 - difference, 150 + difference);
+      lastCorrectedHeading = millis();
     }
 
     break;
-  case Avoiding:
-    if (entered) {
-      DPRINTF("Nav: Avoiding\n\r");
-      platform->direction(true, false);
-      platform->resume();
-      esc->setTargetSpeeds(70, 100);
-    }
-    break;
   case Waiting:
     if (entered) DPRINTF("Nav: Waiting\n\r");
-    if (millis() - enteredAt > waitingFor) {
-      nextState = Looking;
+    if (waitingFor > 0) {
+      if (millis() - enteredAt > waitingFor) {
+        nextState = nextStateAfterPause;
+      }
+    }
+    else if (!platform->isExecuting()) {
+      nextState = nextStateAfterPause;
     }
     break;
   case Looking:
     if (entered) DPRINTF("Nav: Looking\n\r");
     if (eyes->getState() == Eyes::Alert) {
       eyes->lookNext();
-      waitingFor = 2000;
-      nextState = Waiting;
+      pause(Looking, LOOK_DURATION);
     }
     else {
       if (entered) {
-        DPRINTF("Go!\n\r");
+        esc->disable();
+        switch (eyes->getLookDirection()) {
+        case FORWARD_INDEX:
+          break;
+        case LEFT_INDEX:
+          platform->execute(&Left, TURN_DURATION);
+          break;
+        case RIGHT_INDEX:
+          platform->execute(&Right, TURN_DURATION);
+          break;
+        }
+        eyes->lookForward();
+        pauseWhileMoving(Searching);
       }
-    }
-    break;
-  case Clearing:
-    if (entered) {
-      DPRINTF("Nav: Avoiding\n\r");
-      platform->direction(true, false);
-      platform->resume();
-      esc->setTargetSpeeds(70, 100);
-    }
-    if (millis() - enteredAt > 1000) {
-      nextState = Searching;
     }
     break;
   }
 }
 
-void Navigator::turn() {
+void Navigator::pause(state_t after, uint16_t time) {
+  waitingFor = time;
+  nextState = Waiting;
+  nextStateAfterPause = after;
 }
 
+void Navigator::pauseWhileMoving(state_t after) {
+  pause(after, 0);
+}
