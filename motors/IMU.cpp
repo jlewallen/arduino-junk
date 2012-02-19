@@ -36,7 +36,7 @@ void IMU::calibrate() {
   }
 
   DPRINTF("\n\r");
-  for (byte y = 0; y < 6; y++)
+  for (byte y = 0; y < 6; ++y)
     dataOffset[y] /= 32;
   
   dataOffset[5] -= GRAVITY * sensorSigns[5];

@@ -108,9 +108,9 @@ public:
   Matrix3x3 multiply(Matrix3x3 &m) {
     Matrix3x3 o;
     float op[3]; 
-    for (byte x = 0; x < 3; x++) {
-      for (byte y = 0; y < 3; y++) {
-        for (byte w = 0; w < 3; w++) {
+    for (byte x = 0; x < 3; ++x) {
+      for (byte y = 0; y < 3; ++y) {
+        for (byte w = 0; w < 3; ++w) {
           op[w] = rows[x][w] * m[w][y];
         } 
         o[x][y] = op[0] + op[1] + op[2];
@@ -121,18 +121,12 @@ public:
 
   Matrix3x3 add(Matrix3x3 &m) {
     Matrix3x3 o;
-    for (byte x = 0; x < 3; x++) {
-      for (byte y = 0; y < 3; y++) {
+    for (byte x = 0; x < 3; ++x) {
+      for (byte y = 0; y < 3; ++y) {
         o[x][y] = rows[x][y] + m[x][y];
       }
     }
     return o;
-  }
-
-  void print() {
-    for (byte i = 0; i < 3; ++i) {
-      rows[i].print();
-    }
   }
 };
 

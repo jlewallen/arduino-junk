@@ -42,30 +42,6 @@ void Navigator::service() {
   }
   state = nextState;
 
-  if (platform->isMoving() && eyes->didChangedState()) {
-    switch (eyes->getState()) {
-    case Eyes::Starting: {
-      break;
-    }
-    case Eyes::Scanning: {
-      break;
-    }
-    case Eyes::Found: {
-      break;
-    }
-    case Eyes::Lost: {
-      break;
-    }
-    case Eyes::Alert: {
-      esc->disable();
-      platform->stop();
-      eyes->lookNext();
-      pause(Looking, LOOK_DURATION);
-      break;
-    }
-    }
-  }
-
   switch (state) {
   case Starting:
     break;
@@ -86,6 +62,30 @@ void Navigator::service() {
       delete pid;
       pid = new PID(&actualHeading, &difference, &desiredHeading, 40, 0, 20, MANUAL);
       pid->SetMode(AUTOMATIC);
+    }
+
+    if (eyes->didChangedState()) {
+      switch (eyes->getState()) {
+      case Eyes::Starting: {
+        break;
+      }
+      case Eyes::Scanning: {
+        break;
+      }
+      case Eyes::Found: {
+        break;
+      }
+      case Eyes::Lost: {
+        break;
+      }
+      case Eyes::Alert: {
+        esc->disable();
+        platform->stop();
+        eyes->lookNext();
+        pause(Looking, LOOK_DURATION);
+        break;
+      }
+      }
     }
 
     if (millis() - lastCorrectedHeading > HEADING_CORRECTION_INTERVAL) {
