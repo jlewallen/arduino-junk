@@ -6,8 +6,10 @@
 #include "IMU.h"
 #include "Eyes.h"
 
-#define LOOK_DURATION 2000
-#define TURN_DURATION 1200 
+#define SPEED                        150
+#define LOOK_DURATION               2000
+#define TURN_DURATION               1200 
+#define HEADING_CORRECTION_INTERVAL  500
 
 Navigator::Navigator(PlatformMotionController &platform, ESC &esc, IMU &imu, Eyes &eyes)
   : platform(&platform), esc(&esc), imu(&imu), eyes(&eyes), state(Stopped), nextState(Starting), enteredAt(0) {
@@ -77,7 +79,7 @@ void Navigator::service() {
   case Searching:
     if (entered) {
       DPRINTF("Nav: Searching\n\r");
-      esc->configure(150, 150);
+      esc->configure(SPEED, SPEED);
       platform->execute(&command);
       actualHeading = desiredHeading = imu->getHeading();
       difference = 0;
@@ -86,11 +88,11 @@ void Navigator::service() {
       pid->SetMode(AUTOMATIC);
     }
 
-    if (millis() - lastCorrectedHeading > 500) {
+    if (millis() - lastCorrectedHeading > HEADING_CORRECTION_INTERVAL) {
       actualHeading = imu->getHeading();
       pid->Compute();
       DPRINTF("Nav: %f %f %f\n\r", desiredHeading, actualHeading, difference);
-      esc->configure(150 - difference, 150 + difference);
+      esc->configure(SPEED - difference, SPEED + difference);
       lastCorrectedHeading = millis();
     }
 
