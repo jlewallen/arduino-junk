@@ -130,4 +130,7 @@ public:
   }
 };
 
+extern template class Vector3<float>;
+extern template class Matrix3x3<float>;
+
 #endif

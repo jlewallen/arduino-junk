@@ -142,27 +142,28 @@ void IMU::matrixUpdate() {
   omega = gyroVector.add(omegaI);
   omegaVector = omega.add(omegaP); // adding integrator term
 
+  float dtf = dt;
   #define OUTPUTMODE 1
   #if OUTPUTMODE == 1         
   update[0][0] = 0;
-  update[0][1] = -dt * omegaVector[2]; // -z
-  update[0][2] =  dt * omegaVector[1]; // y
-  update[1][0] =  dt * omegaVector[2]; // z
+  update[0][1] = -dtf * omegaVector[2]; // -z
+  update[0][2] =  dtf * omegaVector[1]; // y
+  update[1][0] =  dtf * omegaVector[2]; // z
   update[1][1] = 0;
-  update[1][2] = -dt * omegaVector[0]; // -x
-  update[2][0] = -dt * omegaVector[1]; // -y
-  update[2][1] =  dt * omegaVector[0]; // x
+  update[1][2] = -dtf * omegaVector[0]; // -x
+  update[2][0] = -dtf * omegaVector[1]; // -y
+  update[2][1] =  dtf * omegaVector[0]; // x
   update[2][2] = 0;
   #else
   // No drift correction...
   update[0][0] = 0;
-  update[0][1] = -dt * gyroVector[2]; // -z
-  update[0][2] =  dt * gyroVector[1]; // y
-  update[1][0] =  dt * gyroVector[2]; // z
+  update[0][1] = -dtf * gyroVector[2]; // -z
+  update[0][2] =  dtf * gyroVector[1]; // y
+  update[1][0] =  dtf * gyroVector[2]; // z
   update[1][1] = 0;
-  update[1][2] = -dt * gyroVector[0]; // -x
-  update[2][0] = -dt * gyroVector[1]; // -y
-  update[2][1] =  dt * gyroVector[0]; // x
+  update[1][2] = -dtf * gyroVector[0]; // -x
+  update[2][0] = -dtf * gyroVector[1]; // -y
+  update[2][1] =  dtf * gyroVector[0]; // x
   update[2][2] = 0;
   #endif
 

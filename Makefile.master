@@ -137,7 +137,7 @@ CXX_FLAGS = $(C_CXX_FLAGS)
 OPT_FLAGS = -Os -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums \
     -ffunction-sections -fdata-sections -Wl,--gc-sections,--relax \
     -fno-inline-small-functions -fno-tree-scev-cprop -fno-exceptions \
-    -ffreestanding -mcall-prologues
+    -ffreestanding -mcall-prologues -fno-inline
 
 # Build parameters.
 IMAGE = $(BUILD_DIR)/$(SKETCH)
@@ -249,6 +249,10 @@ $(IMAGE).hex : $(ARD_AR_OBJ) $(LIB_AR_OBJ) $(SKT_AR_OBJ) $(SKT_PDE_OBJ)
 	$(OBJCOPY) -O ihex -R .eeprom $(IMAGE).elf $(IMAGE).hex
 	$(OBJDUMP) -h -S $(IMAGE).elf | $(CXXFILT) -t > $(IMAGE).lst
 	$(SIZE) $(IMAGE).hex
+	$(SIZE) -C --mcu=atmega328p $(IMAGE).hex
+	$(OBJDUMP) -S -C $(IMAGE).elf > $(IMAGE)-all.lst
+	$(OBJDUMP) -t -C $(IMAGE).elf > $(IMAGE).txt
+	$(NM) -r -C --size-sort -S $(IMAGE).elf > $(IMAGE)-sorted.txt
 
 size :
 	$(SIZE) $(IMAGE).hex

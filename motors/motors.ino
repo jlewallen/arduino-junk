@@ -141,18 +141,20 @@ public:
   }
 };
 
-static MotorController rightMotor(11, 4, 5);
-static MotorController leftMotor(6, 7, 8);
-static IMU imu;
-static PlatformMotionController platform(leftMotor, rightMotor);
-static ESC esc(platform, 0, 1);
-static Eyes eyes(12, 9);
-static Navigator navigator(platform, esc, imu, eyes);
-static SerialController serialController(platform, esc, navigator, eyes);
-static ButtonsController buttonsController(platform, esc, navigator);
-static uint32_t previousPlatformDebug;
+int main(void) {
+  MotorController rightMotor(11, 4, 5);
+  MotorController leftMotor(6, 7, 8);
+  IMU imu;
+  PlatformMotionController platform(leftMotor, rightMotor);
+  ESC esc(platform, 0, 1);
+  Eyes eyes(12, 9);
+  Navigator navigator(platform, esc, imu, eyes);
+  SerialController serialController(platform, esc, navigator, eyes);
+  ButtonsController buttonsController(platform, esc, navigator);
+  uint32_t previousPlatformDebug;
 
-void setup() {
+	init();
+
   serialController.begin();
   buttonsController.begin();
   esc.begin();
@@ -161,23 +163,23 @@ void setup() {
   serialController.ready();
   imu.begin();
   previousPlatformDebug = millis();
+
+	for (;;) {
+    imu.service();
+    serialController.service();
+    buttonsController.service();
+    platform.service();
+    esc.service();
+    eyes.service();
+    navigator.service();
+
+    // #define SERIAL_DEBUG
+    #if defined(SERIAL_DEBUG)
+    if (millis() - previousPlatformDebug > 1000) {
+      platform.debug();
+      previousPlatformDebug = millis();
+    }
+    #endif
+	}
+	return 0;
 }
-
-void loop() {
-  imu.service();
-  serialController.service();
-  buttonsController.service();
-  platform.service();
-  esc.service();
-  eyes.service();
-  navigator.service();
-
-  // #define SERIAL_DEBUG
-  #if defined(SERIAL_DEBUG)
-  if (millis() - previousPlatformDebug > 1000) {
-    platform.debug();
-    previousPlatformDebug = millis();
-  }
-  #endif
-}
-
