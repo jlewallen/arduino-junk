@@ -3,36 +3,50 @@
  */
 #include <Arduino.h>
 #include <printf.h>
-#include <Servicable.h>
 #include <Servo.h>
+#include <Servicable.h>
+#include <Debuggable.h>
+
+volatile int16_t leftValue = false;
+volatile int16_t rightValue = false;
+volatile uint32_t left = 0;
+volatile uint32_t right = 0;
+
+static void leftChange() {
+  int16_t value = digitalRead(3);
+  if (value != leftValue) {
+    left++;
+    leftValue = value;
+  }
+}
+
+static void rightChange() {
+  int16_t value = digitalRead(2);
+  if (value != rightValue) {
+    right++;
+    rightValue = value;
+  }
+}
 
 class Encoders : public Servicable {
 private:
-  static uint32_t left;
-  static uint32_t right;
   uint32_t previous;
   uint8_t leftIn;
   uint8_t rightIn;
+  uint32_t leftCounter;
+  uint32_t rightCounter;
 
 public:
   Encoders(uint8_t left, uint8_t right) : leftIn(left), rightIn(right) {
   }
 
 public:
-  static void leftChange() {
-    left++;
-  }
-
-  static void rightChange() {
-    right++;
-  }
-
   uint32_t getLeft() {
-    return left;
+    return leftCounter;
   }
 
   uint32_t getRight() {
-    return right;
+    return rightCounter;
   }
 
   void clear() {
@@ -42,18 +56,19 @@ public:
   void begin() {
     attachInterrupt(leftIn, leftChange, CHANGE);
     attachInterrupt(rightIn, rightChange, CHANGE);
+    pinMode(2, INPUT);
+    pinMode(3, INPUT);
+    digitalWrite(2, HIGH);
+    digitalWrite(3, HIGH);
   }
 
   void service() {
-    if (millis() - previous > 1000) {
-      // printf("%lu %lu\n\r", left, right);
-      previous = millis();
-    }
+    noInterrupts();
+    leftCounter = left;
+    rightCounter = left;
+    interrupts();
   }
 };
-
-uint32_t Encoders::left = 0;
-uint32_t Encoders::right = 0;
 
 uint16_t keyRanges[5] = { 30, 150, 360, 535, 760 };
 
