@@ -6,14 +6,20 @@
 #include <Servo.h>
 #include <Servicable.h>
 #include <Debuggable.h>
+#include <StateMachine.h>
 
 volatile int16_t encodersLeftState = false;
 volatile int16_t encodersRightState = false;
 volatile uint32_t encodersLeftCounter = 0;
 volatile uint32_t encodersRightCounter = 0;
 
+#define ENCODER_0_PIN        2
+#define ENCODER_1_PIN        3
+#define ENCODER_0_INTERRUPT  1
+#define ENCODER_1_INTERRUPT   0
+
 static void leftChange() {
-  int16_t value = digitalRead(3);
+  int16_t value = digitalRead(ENCODER_1_PIN);
   if (value != encodersLeftState) {
     encodersLeftCounter++;
     encodersLeftState = value;
@@ -21,7 +27,7 @@ static void leftChange() {
 }
 
 static void rightChange() {
-  int16_t value = digitalRead(2);
+  int16_t value = digitalRead(ENCODER_0_PIN);
   if (value != encodersRightState) {
     encodersRightCounter++;
     encodersRightState = value;
@@ -31,13 +37,11 @@ static void rightChange() {
 class Encoders : public Servicable {
 private:
   uint32_t previous;
-  uint8_t leftIn;
-  uint8_t rightIn;
   uint32_t leftCounter;
   uint32_t rightCounter;
 
 public:
-  Encoders(uint8_t left, uint8_t right) : leftIn(left), rightIn(right) {
+  Encoders() {
   }
 
 public:
@@ -58,12 +62,12 @@ public:
   }
 
   void begin() {
-    attachInterrupt(leftIn, leftChange, CHANGE);
-    attachInterrupt(rightIn, rightChange, CHANGE);
-    pinMode(2, INPUT);
-    pinMode(3, INPUT);
-    digitalWrite(2, HIGH);
-    digitalWrite(3, HIGH);
+    attachInterrupt(ENCODER_0_INTERRUPT, rightChange, CHANGE);
+    attachInterrupt(ENCODER_1_INTERRUPT, leftChange, CHANGE);
+    pinMode(ENCODER_0_PIN, INPUT);
+    pinMode(ENCODER_1_PIN, INPUT);
+    digitalWrite(ENCODER_0_PIN, HIGH);
+    digitalWrite(ENCODER_1_PIN, HIGH);
   }
 
   void service() {
@@ -346,64 +350,6 @@ public:
   }
 };
 
-#define INVALID_STATE 65535
-#define WAITING_STATE INVALID_STATE - 1
-
-class StateMachine {
-private:
-  uint16_t state;
-  uint16_t nextState;
-  uint16_t afterWaitingState;
-  uint32_t enteredAt;
-  uint32_t duration;
-
-public:
-  StateMachine(uint16_t state) :
-    state(INVALID_STATE), nextState(state), enteredAt(0) {
-  }
-
-  uint16_t getState() {
-    return state;
-  }
-
-  void transition(uint16_t state) {
-    nextState = state;
-  }
-
-  void transitionAfter(uint16_t state, uint32_t time) {
-    nextState = WAITING_STATE;
-    afterWaitingState = state;
-    duration = time;
-  }
-
-  void begin() {
-  }
-
-  void service() {
-    boolean justEntered = state != nextState;
-    if (justEntered) {
-      enteredAt = millis();
-      state = nextState;
-      entered(state);
-    }
-    else {
-      switch (state) {
-      case WAITING_STATE:
-        if (millis() - enteredAt > duration) {
-          nextState = afterWaitingState;
-        }
-        break;
-      default:
-        service(state, enteredAt);
-        break;
-      }
-    }
-  }
-
-  virtual void entered(uint16_t state) = 0;
-  virtual void service(uint16_t state, uint32_t enteredAt) = 0;
-};
-
 class Navigator : public Servicable, public StateMachine {
 private:
   typedef enum {
@@ -608,7 +554,7 @@ int16_t main(void) {
 	init();
 
   MotionController motionController;
-  Encoders encoders(1, 0);
+  Encoders encoders;
   DigitalMaxSonar sonar(11);
   Head head;
   Obstructions obstructions(12);
