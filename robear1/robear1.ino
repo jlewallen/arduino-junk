@@ -324,11 +324,36 @@ public:
 
 class DebugController : public Servicable {
 private:
+  Head *head;
+  Encoders *encoders;
+  MaxSonar *sonar;
+  boolean enabled;
+  uint32_t previous;
+
 public:
+  DebugController(Head &head, Encoders &encoders, MaxSonar &sonar) :
+    head(&head), encoders(&encoders), sonar(&sonar), enabled(false), previous(0) {
+  }
+
   void begin() {
   }
 
   void service() {
+    #ifdef DEBUG
+    if (!enabled) {
+      return;
+    }
+    if (millis() - previous > 500) {
+      printf("s=%7.3f l=%5lu r=%5lu\n\r", sonar->getDistance(), encoders->getLeft(), encoders->getRight());
+      previous = millis();
+    }
+    #endif
+  }
+
+  void toggle() {
+    #ifdef DEBUG
+    enabled = !enabled;
+    #endif
   }
 };
 
@@ -336,9 +361,12 @@ class SerialController : public Servicable {
 private:
   Head *head;
   MotionController *motion;
+  DebugController *debug;
+  uint32_t stopAt;
 
 public:
-  SerialController(Head &head, MotionController &motion) : head(&head), motion(&motion) {
+  SerialController(Head &head, MotionController &motion, DebugController &debug) : head(&head), motion(&motion), debug(&debug) {
+    stopAt = 0;
   }
 
   void begin() {
@@ -427,7 +455,8 @@ int16_t main(void) {
   Encoders encoders(1, 0);
   DigitalMaxSonar sonar(11);
   Head head;
-  SerialController serialController(head, motionController);
+  DebugController debug(head, encoders, sonar);
+  SerialController serialController(head, motionController, debug);
 
   motionController.begin();
   buttonsController.begin();
@@ -435,6 +464,7 @@ int16_t main(void) {
   sonar.begin();
   head.begin();
   serialController.begin();
+  debug.begin();
   serialController.ready();
 
 	for (;;) {
@@ -444,6 +474,7 @@ int16_t main(void) {
     sonar.service();
     head.service();
     motionController.service();
+    debug.service();
 	}
 	return 0;
 }
