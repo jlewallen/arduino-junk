@@ -7,24 +7,24 @@
 #include <Servicable.h>
 #include <Debuggable.h>
 
-volatile int16_t leftValue = false;
-volatile int16_t rightValue = false;
-volatile uint32_t left = 0;
-volatile uint32_t right = 0;
+volatile int16_t encodersLeftState = false;
+volatile int16_t encodersRightState = false;
+volatile uint32_t encodersLeftCounter = 0;
+volatile uint32_t encodersRightCounter = 0;
 
 static void leftChange() {
   int16_t value = digitalRead(3);
-  if (value != leftValue) {
-    left++;
-    leftValue = value;
+  if (value != encodersLeftState) {
+    encodersLeftCounter++;
+    encodersLeftState = value;
   }
 }
 
 static void rightChange() {
   int16_t value = digitalRead(2);
-  if (value != rightValue) {
-    right++;
-    rightValue = value;
+  if (value != encodersRightState) {
+    encodersRightCounter++;
+    encodersRightState = value;
   }
 }
 
@@ -50,7 +50,11 @@ public:
   }
 
   void clear() {
-    left = right = 0;
+    noInterrupts();
+    leftCounter = rightCounter = 0;
+    encodersLeftCounter = 0;
+    encodersRightCounter = 0;
+    interrupts();
   }
 
   void begin() {
@@ -64,8 +68,8 @@ public:
 
   void service() {
     noInterrupts();
-    leftCounter = left;
-    rightCounter = left;
+    leftCounter = encodersLeftCounter;
+    rightCounter = encodersRightCounter;
     interrupts();
   }
 };
@@ -254,12 +258,42 @@ public:
   }
 };
 
+typedef struct {
+  uint8_t speed1;
+  uint8_t speed2;
+  uint8_t motor1 : 1;
+  uint8_t motor2 : 1;
+  uint32_t duration;
+} motion_command_t;
+
+motion_command_t stop = {
+  0, 0, false, false, 0
+};
+
+motion_command_t forward = {
+  100, 100, true, true, 0
+};
+
+motion_command_t backward = {
+  100, 100, false, false, 0
+};
+
+motion_command_t left = {
+  100, 100, false, true, 0
+};
+
+motion_command_t right = {
+  100, 100, true, false, 0
+};
+
 class MotionController : public Servicable {
 private:
   uint8_t speed1;
   uint8_t speed2;
   uint8_t motor1;
   uint8_t motor2;
+  motion_command_t active;
+  uint32_t startedAt;
 
 public:
   MotionController() {
@@ -267,6 +301,8 @@ public:
     speed2 = 6;
     motor1 = 4;
     motor2 = 7;
+    startedAt = 0;
+    memzero(&active, sizeof(motion_command_t));
   }
 
   void begin() {
@@ -277,48 +313,26 @@ public:
   }
 
   void service() {
+    if (active.duration > 0) {
+      if (millis() - startedAt > active.duration) {
+        active.duration = 0;
+        execute(&stop);
+      }
+    }
   }
 
-  void stop(void)
-  {
-    analogWrite(speed1, 0);
-    analogWrite(speed2, 0);    
-    digitalWrite(motor1, LOW);   
-    digitalWrite(motor2, LOW);      
-  }   
-  
-  void backward(char a, char b)
-  {
-    analogWrite(speed1, a);
-    digitalWrite(motor1, LOW);    
-    analogWrite(speed2, b);    
-    digitalWrite(motor2, LOW);
-  }  
-  
-  void forward(char a, char b)
-  {
-    analogWrite(speed1, a);
-    digitalWrite(motor1, HIGH);   
-    analogWrite(speed2, b);    
-    digitalWrite(motor2, HIGH);
+  void execute(motion_command_t *c) {
+    execute(c, 0);
   }
-  
-  void turnLeft(char a, char b)
-  {
-    stop();
-    digitalWrite(motor1, LOW);    
-    digitalWrite(motor2, HIGH);
-    analogWrite(speed1, a);
-    analogWrite(speed2, b);    
-  }
-  
-  void turnRight(char a, char b)
-  {
-    stop();
-    digitalWrite(motor1, HIGH);    
-    digitalWrite(motor2, LOW);
-    analogWrite(speed1, a);
-    analogWrite(speed2, b);    
+
+  void execute(motion_command_t *c, uint32_t duration) {
+    memcpy(&active, c, sizeof(motion_command_t));
+    analogWrite(speed1, active.speed1);
+    analogWrite(speed2, active.speed1);
+    digitalWrite(motor1, active.motor1);
+    digitalWrite(motor2, active.motor2);
+    active.duration = duration;
+    startedAt = millis();
   }
 };
 
@@ -362,11 +376,9 @@ private:
   Head *head;
   MotionController *motion;
   DebugController *debug;
-  uint32_t stopAt;
 
 public:
   SerialController(Head &head, MotionController &motion, DebugController &debug) : head(&head), motion(&motion), debug(&debug) {
-    stopAt = 0;
   }
 
   void begin() {
@@ -379,30 +391,22 @@ public:
   }
 
   void service() {
-    if (stopAt > 0 && millis() > stopAt) {
-      motion->stop();
-      stopAt = 0;
-    }
     if (Serial.available() > 0) {
       switch (Serial.read()) {
       case 'w':
-        motion->forward(100, 100);
-        stopAt = millis() + 500;
+        motion->execute(&forward, 500);
         break;
       case 's':
-        motion->backward(100, 100);
-        stopAt = millis() + 500;
+        motion->execute(&backward, 500);
         break;
       case 'a':
-        motion->turnLeft(125, 125);
-        stopAt = millis() + 500;
+        motion->execute(&left, 500);
         break;       
       case 'd':
-        motion->turnRight(125, 125);
-        stopAt = millis() + 500;
+        motion->execute(&right, 500);
         break;          
       case '.':
-        motion->stop();
+        motion->execute(&stop);
         head->lookStraight();
         break;          
       case 'j':
