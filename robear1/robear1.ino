@@ -74,56 +74,6 @@ public:
   }
 };
 
-uint16_t keyRanges[5] = { 30, 150, 360, 535, 760 };
-
-class ButtonsController : public Servicable {
-private:
-  uint32_t previous;
-  int8_t pressedPreviously;
-
-  int8_t analogToButton(uint16_t value) {
-    for (int8_t k = 0; k < 5; ++k) {
-      if (value < keyRanges[k]) {  
-        return k;  
-      }
-    }
-    return -1;
-  }
-
-public:
-  ButtonsController() : previous(0), pressedPreviously(0) {
-  }
-
-  void begin() {
-    pinMode(13, OUTPUT);
-  }
-
-  void service() {
-    int8_t pressed = analogToButton(analogRead(7));
-    if (pressed != pressedPreviously) {
-      if (pressed == -1) {
-        button(pressed);
-      }
-      pressedPreviously = pressed;
-    }
-  }
-
-  void button(uint8_t button) {
-    switch (button) {
-    case 0:
-      break;
-    case 1:
-      break;
-    case 2:
-      break;
-    case 3:
-      break;
-    case 4:
-      break;
-    }
-  }
-};
-
 class MaxSonar : public Servicable {
 protected:
   uint8_t pin;
@@ -266,23 +216,23 @@ typedef struct {
   uint32_t duration;
 } motion_command_t;
 
-motion_command_t stop = {
+motion_command_t stopCommand = {
   0, 0, false, false, 0
 };
 
-motion_command_t forward = {
+motion_command_t forwardCommand = {
   100, 100, true, true, 0
 };
 
-motion_command_t backward = {
+motion_command_t backwardCommand = {
   100, 100, false, false, 0
 };
 
-motion_command_t left = {
+motion_command_t leftCommand = {
   125, 100, false, true, 0
 };
 
-motion_command_t right = {
+motion_command_t rightCommand = {
   125, 100, true, false, 0
 };
 
@@ -316,7 +266,7 @@ public:
     if (active.duration > 0) {
       if (millis() - startedAt > active.duration) {
         active.duration = 0;
-        execute(&stop);
+        execute(&stopCommand);
       }
     }
   }
@@ -396,14 +346,208 @@ public:
   }
 };
 
+#define INVALID_STATE 65535
+#define WAITING_STATE INVALID_STATE - 1
+
+class StateMachine {
+private:
+  uint16_t state;
+  uint16_t nextState;
+  uint16_t afterWaitingState;
+  uint32_t enteredAt;
+  uint32_t duration;
+
+public:
+  StateMachine(uint16_t state) :
+    state(INVALID_STATE), nextState(state), enteredAt(0) {
+  }
+
+  uint16_t getState() {
+    return state;
+  }
+
+  void transition(uint16_t state) {
+    nextState = state;
+  }
+
+  void transitionAfter(uint16_t state, uint32_t time) {
+    nextState = WAITING_STATE;
+    afterWaitingState = state;
+    duration = time;
+  }
+
+  void begin() {
+  }
+
+  void service() {
+    boolean justEntered = state != nextState;
+    if (justEntered) {
+      enteredAt = millis();
+      state = nextState;
+      entered(state);
+    }
+    else {
+      switch (state) {
+      case WAITING_STATE:
+        if (millis() - enteredAt > duration) {
+          nextState = afterWaitingState;
+        }
+        break;
+      default:
+        service(state, enteredAt);
+        break;
+      }
+    }
+  }
+
+  virtual void entered(uint16_t state) = 0;
+  virtual void service(uint16_t state, uint32_t enteredAt) = 0;
+};
+
+class Navigator : public Servicable, public StateMachine {
+private:
+  typedef enum {
+    Stopped,
+    Waiting,
+    Searching,
+    Obstructed,
+    Avoiding
+  } state_t;
+
+  MotionController *motion;
+  Encoders *encoders;
+  MaxSonar *sonar;
+  Head *head;
+  Obstructions *obstructions;
+
+public:
+  Navigator(MotionController &motion, Encoders &encoders, MaxSonar &sonar, Head &head, Obstructions &obstructions) :
+    StateMachine(Stopped),
+    motion(&motion), encoders(&encoders), sonar(&sonar), head(&head), obstructions(&obstructions) {
+  }
+
+  void begin() {
+  }
+
+  void service() {
+    StateMachine::service();
+  }
+  
+  void search() {
+    transitionAfter(Searching, 1000);
+  }
+
+  void stop() {
+    transition(Stopped);
+  }
+
+  void entered(uint16_t state) {
+    switch (state) {
+    case Stopped:
+      DPRINTF("Stopped\n\r");
+      motion->execute(&stopCommand);
+      break;
+    case Searching:
+      DPRINTF("Searching\n\r");
+      motion->execute(&forwardCommand);
+      break;
+    case Obstructed:
+      DPRINTF("Obstructed\n\r");
+      motion->execute(&stopCommand);
+      transition(Avoiding);
+      break;
+    case Avoiding:
+      DPRINTF("Avoiding\n\r");
+      motion->execute(&backwardCommand);
+      break;
+    }
+  }
+
+  void service(uint16_t state, uint32_t enteredAt) {
+    switch (state) {
+    case Stopped:
+      break;
+    case Searching:
+      if (obstructions->isBlocked()) {
+        transition(Obstructed);
+      }
+      break;
+    case Obstructed:
+      break;
+    case Avoiding:
+      if (!obstructions->isBlocked()) {
+        transition(Stopped);
+      }
+      break;
+    }
+  }
+};
+
+uint16_t keyRanges[5] = { 30, 150, 360, 535, 760 };
+
+class ButtonsController : public Servicable {
+private:
+  uint32_t previous;
+  int8_t pressedPreviously;
+  Navigator *navigator;
+
+private:
+  int8_t analogToButton(uint16_t value) {
+    for (int8_t k = 0; k < 5; ++k) {
+      if (value < keyRanges[k]) {  
+        return k;  
+      }
+    }
+    return -1;
+  }
+
+public:
+  ButtonsController(Navigator &navigator) :
+    previous(0), pressedPreviously(0), navigator(&navigator) {
+  }
+
+  void begin() {
+    pinMode(13, OUTPUT);
+  }
+
+  void service() {
+    int8_t pressed = analogToButton(analogRead(7));
+    if (pressed != pressedPreviously) {
+      if (pressed != -1) {
+        button(pressed);
+      }
+      pressedPreviously = pressed;
+    }
+  }
+
+  void button(uint8_t button) {
+    switch (button) {
+    case 0:
+      navigator->search();
+      break;
+    case 1:
+      navigator->stop();
+      break;
+    case 2:
+      break;
+    case 3:
+      break;
+    case 4:
+      break;
+    }
+  }
+};
+
 class SerialController : public Servicable {
 private:
   Head *head;
   MotionController *motion;
   DebugController *debug;
+  Navigator *navigator;
 
 public:
-  SerialController(Head &head, MotionController &motion, DebugController &debug) : head(&head), motion(&motion), debug(&debug) {
+  SerialController(Head &head, MotionController &motion, DebugController &debug, Navigator &navigator) :
+    head(&head), motion(&motion), debug(&debug), navigator(&navigator) {
   }
 
   void begin() {
@@ -419,19 +563,19 @@ public:
     if (Serial.available() > 0) {
       switch (Serial.read()) {
       case 'w':
-        motion->execute(&forward, 500);
+        motion->execute(&forwardCommand, 500);
         break;
       case 's':
-        motion->execute(&backward, 500);
+        motion->execute(&backwardCommand, 500);
         break;
       case 'a':
-        motion->execute(&left, 500);
+        motion->execute(&leftCommand, 500);
         break;       
       case 'd':
-        motion->execute(&right, 500);
+        motion->execute(&rightCommand, 500);
         break;          
       case '.':
-        motion->execute(&stop);
+        motion->execute(&stopCommand);
         head->lookStraight();
         break;          
       case 'j':
@@ -449,34 +593,14 @@ public:
       case 'v':
         debug->toggle();
         break;
+      case '1':
+        navigator->search();
+        break;
+      case '0':
+        navigator->stop();
+        break;
       }     
     }
-  }
-};
-
-class Navigator : public Servicable {
-private:
-  MotionController *motion;
-  Encoders *encoders;
-  MaxSonar *sonar;
-  Head *head;
-  Obstructions *obstructions;
-
-public:
-  Navigator(MotionController &motion, Encoders &encoders, MaxSonar &sonar, Head &head, Obstructions &obstructions) :
-    motion(&motion), encoders(&encoders), sonar(&sonar), head(&head), obstructions(&obstructions) {
-  }
-
-  void begin() {
-  }
-
-  void service() {
-    if (obstructions->isBlocked()) {
-      motion->execute(&stop);
-    }
-  }
-  
-  void search() {
   }
 };
 
@@ -484,14 +608,14 @@ int16_t main(void) {
 	init();
 
   MotionController motionController;
-  ButtonsController buttonsController;
   Encoders encoders(1, 0);
   DigitalMaxSonar sonar(11);
   Head head;
   Obstructions obstructions(12);
   DebugController debug(head, encoders, sonar);
-  SerialController serialController(head, motionController, debug);
   Navigator navigator(motionController, encoders, sonar, head, obstructions);
+  SerialController serialController(head, motionController, debug, navigator);
+  ButtonsController buttonsController(navigator);
 
   motionController.begin();
   buttonsController.begin();
