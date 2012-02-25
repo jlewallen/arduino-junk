@@ -351,27 +351,27 @@ public:
   }
 
   void service() {
+    if (stopAt > 0 && millis() > stopAt) {
+      motion->stop();
+      stopAt = 0;
+    }
     if (Serial.available() > 0) {
       switch (Serial.read()) {
       case 'w':
         motion->forward(100, 100);
-        delay(500);
-        motion->stop();
+        stopAt = millis() + 500;
         break;
       case 's':
         motion->backward(100, 100);
-        delay(500);
-        motion->stop();
+        stopAt = millis() + 500;
         break;
       case 'a':
         motion->turnLeft(125, 125);
-        delay(500);
-        motion->stop();
+        stopAt = millis() + 500;
         break;       
       case 'd':
         motion->turnRight(125, 125);
-        delay(500);
-        motion->stop();
+        stopAt = millis() + 500;
         break;          
       case '.':
         motion->stop();
@@ -389,44 +389,33 @@ public:
       case 'n':
         head->lookUp();
         break;
+      case 'v':
+        debug->toggle();
+        break;
       }     
-      /*
-      case 'a':
-        printf("Nudge Left\n\r");
-        // platform->execute(&Left, 600);
-        break;
-      case 's':
-        printf("Nudge Right\n\r");
-        // platform->execute(&Right, 600);
-        break;
-      case 'g':
-        printf("Nudge Forward\n\r");
-        // platform->execute(&Forward, 500);
-        break;
-      case 'h':
-        printf("Nudge Backward\n\r");
-        // platform->execute(&Backward, 1000);
-        break;
-      case 'z':
-        // eyes->lookNext();
-        break;
-      case 'c':
-        // eyes->lookForward();
-        break;
-      case 'q':
-        printf("Forward\n\r");
-        // navigator->search();
-        break;
-      case 'w':
-        printf("Backward\n\r");
-        break;
-      case '.':
-        printf("Stop\n\r");
-        // navigator->stop();
-        break;
-      }
-      */
     }
+  }
+};
+
+class Navigator : public Servicable {
+private:
+  MotionController *motion;
+  Encoders *encoders;
+  MaxSonar *sonar;
+  Head *head;
+
+public:
+  Navigator(MotionController &motion, Encoders &encoders, MaxSonar &sonar, Head &head) :
+    motion(&motion), encoders(&encoders), sonar(&sonar), head(&head) {
+  }
+
+  void begin() {
+  }
+
+  void service() {
+  }
+  
+  void search() {
   }
 };
 
