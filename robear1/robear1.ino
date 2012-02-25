@@ -279,11 +279,11 @@ motion_command_t backward = {
 };
 
 motion_command_t left = {
-  100, 100, false, true, 0
+  125, 100, false, true, 0
 };
 
 motion_command_t right = {
-  100, 100, true, false, 0
+  125, 100, true, false, 0
 };
 
 class MotionController : public Servicable {
@@ -333,6 +333,31 @@ public:
     digitalWrite(motor2, active.motor2);
     active.duration = duration;
     startedAt = millis();
+  }
+};
+
+class Obstructions : public Servicable {
+private:
+  uint8_t pin;
+  uint8_t blocked;
+
+public:
+  Obstructions(uint8_t pin) : pin(pin), blocked(false) {
+  }
+
+  void begin() {
+    pinMode(pin, INPUT);
+  }
+
+  uint8_t isBlocked() {
+    return blocked;
+  }
+
+  void service() {
+    uint8_t blockedNow = !digitalRead(pin);
+    if (blockedNow != blocked) {
+      blocked = blockedNow;
+    }
   }
 };
 
@@ -435,16 +460,20 @@ private:
   Encoders *encoders;
   MaxSonar *sonar;
   Head *head;
+  Obstructions *obstructions;
 
 public:
-  Navigator(MotionController &motion, Encoders &encoders, MaxSonar &sonar, Head &head) :
-    motion(&motion), encoders(&encoders), sonar(&sonar), head(&head) {
+  Navigator(MotionController &motion, Encoders &encoders, MaxSonar &sonar, Head &head, Obstructions &obstructions) :
+    motion(&motion), encoders(&encoders), sonar(&sonar), head(&head), obstructions(&obstructions) {
   }
 
   void begin() {
   }
 
   void service() {
+    if (obstructions->isBlocked()) {
+      motion->execute(&stop);
+    }
   }
   
   void search() {
@@ -459,8 +488,10 @@ int16_t main(void) {
   Encoders encoders(1, 0);
   DigitalMaxSonar sonar(11);
   Head head;
+  Obstructions obstructions(12);
   DebugController debug(head, encoders, sonar);
   SerialController serialController(head, motionController, debug);
+  Navigator navigator(motionController, encoders, sonar, head, obstructions);
 
   motionController.begin();
   buttonsController.begin();
@@ -468,7 +499,9 @@ int16_t main(void) {
   sonar.begin();
   head.begin();
   serialController.begin();
+  obstructions.begin();
   debug.begin();
+  navigator.begin();
   serialController.ready();
 
 	for (;;) {
@@ -477,6 +510,8 @@ int16_t main(void) {
     buttonsController.service();
     sonar.service();
     head.service();
+    obstructions.service();
+    navigator.service();
     motionController.service();
     debug.service();
 	}
