@@ -6,6 +6,7 @@
 class Servicable {
 public:
   virtual ~Servicable () { }
+  virtual void begin() = 0;
   virtual void service() = 0;
 };
 

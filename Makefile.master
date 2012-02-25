@@ -271,6 +271,9 @@ monitor :
 	- $(MON_CMD) -L $(PORT) $(MON_SPEED)
 	- reset
 	- stty sane
+
+info :
+	- @echo $(BOARD)
 # END:makemods
 
 upload_monitor : upload monitor

@@ -24,6 +24,9 @@ public:
     pinMode(pin, INPUT);
   }
 
+  void begin() {
+  }
+
   void service() {
     tick();
   }
@@ -116,6 +119,8 @@ public:
   }
 
   void begin() {
+    button1.begin();
+    button2.begin();
   }
 
   void service() {
@@ -142,6 +147,8 @@ public:
 };
 
 int main(void) {
+	init();
+
   MotorController rightMotor(11, 4, 5);
   MotorController leftMotor(6, 7, 8);
   IMU imu;
@@ -152,8 +159,6 @@ int main(void) {
   SerialController serialController(platform, esc, navigator, eyes);
   ButtonsController buttonsController(platform, esc, navigator);
   uint32_t previousPlatformDebug;
-
-	init();
 
   serialController.begin();
   buttonsController.begin();
