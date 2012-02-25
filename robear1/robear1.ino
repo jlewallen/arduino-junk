@@ -185,7 +185,7 @@ public:
         previous = micros();
       }
       else {
-        accumulator += micros() - previous;
+        accumulator += (micros() - previous) / 58;
         samples++;
       }
       previousValue = value;
@@ -193,7 +193,7 @@ public:
 
     if (samples == 5) {
       float average = accumulator / (float)samples;
-      distance = average / 58.0;
+      distance = average;
       accumulator = 0;
       samples = 0;
     }
@@ -230,22 +230,26 @@ public:
 
   void lookUp() {
     pitch = constrain(pitch - 10, PITCH_MIN, PITCH_MAX);
+    DPRINTF("Pitch: %d\n\r", pitch);
   }
 
   void lookDown() {
     pitch = constrain(pitch + 10, PITCH_MIN, PITCH_MAX);
+    DPRINTF("Pitch: %d\n\r", pitch);
   }
 
   void lookLeft() {
     yaw = constrain(yaw + 10, YAW_MIN, YAW_MAX);
+    DPRINTF("Yaw: %d\n\r", pitch);
   }
 
   void lookRight() {
     yaw = constrain(yaw - 10, YAW_MIN, YAW_MAX);
+    DPRINTF("Yaw: %d\n\r", pitch);
   }
 
   void lookStraight() {
-    pitch = 30;
+    pitch = 56;
     yaw = 100;
   }
 };
