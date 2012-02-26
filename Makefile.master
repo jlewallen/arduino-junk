@@ -91,8 +91,10 @@ ifndef PORT
 endif
 
 # Version-specific settings
+HARDWARE ?= arduino
 ARD_BOARDS = $(ARD_HOME)/hardware/arduino/boards.txt
-ARD_SRC_DIR = $(ARD_HOME)/hardware/arduino/cores/arduino
+ARD_SRC_DIR = $(ARD_HOME)/hardware/$(HARDWARE)/cores/$(HARDWARE)
+VARIANTS_DIR = $(ARD_HOME)/hardware/$(HARDWARE)/variants/standard
 ARD_MAIN = $(ARD_SRC_DIR)/main.cpp
 
 # Standard macros.
@@ -120,7 +122,6 @@ MV = mv -f
 LN = ln -f
 
 # Compiler flags.
-VARIANTS_DIR = $(ARD_HOME)/hardware/arduino/variants/standard
 INC_FLAGS = $(addprefix -I,$(INC_DIRS)) $(addprefix -I,$(LIB_DIRS)) -I$(ARD_SRC_DIR) -I$(VARIANTS_DIR)
 ARD_FLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -DARDUINO=$(ARD_REV)
 C_CXX_FLAGS = $(USER_C_FLAGS) -Wall -Wextra -Wundef -Wno-unused-parameter -fdiagnostics-show-option -g -Wa,-adhlns=$(BUILD_DIR)/$*.lst 
@@ -265,7 +266,7 @@ upload : all
 	- kill -9 `ps -axo pid,args | grep -i 'tty.usb' | grep -v 'grep' | awk '{ print $$1 }'` #- pkill -f '$(MON_CMD).*$(PORT)'
 	- sleep 1
 	- stty -F $(PORT) hupcl
-	- $(AVRDUDE) -V -C$(AVRDUDE_CONF) -p$(MCU) -c$(PROGRAMMER) -P$(PORT) -b$(UPLOAD_SPEED) -D -Uflash:w:$(IMAGE).hex:i
+	- $(AVRDUDE) -V -C$(AVRDUDE_CONF) -p$(MCU) -c$(PROGRAMMER) -P$(PORT) -b$(UPLOAD_SPEED) -Uflash:w:$(IMAGE).hex:i
 
 monitor :
 	- $(MON_CMD) -L $(PORT) $(MON_SPEED)
