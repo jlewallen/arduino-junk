@@ -15,8 +15,8 @@ volatile uint32_t encodersRightCounter = 0;
 
 #define ENCODER_0_PIN        2
 #define ENCODER_1_PIN        3
-#define ENCODER_0_INTERRUPT  1
-#define ENCODER_1_INTERRUPT   0
+#define ENCODER_0_INTERRUPT  0
+#define ENCODER_1_INTERRUPT  1
 
 static void leftChange() {
   int16_t value = digitalRead(ENCODER_1_PIN);
@@ -357,7 +357,9 @@ private:
     Waiting,
     Searching,
     Obstructed,
-    Avoiding
+    Avoiding,
+    Turning,
+    Stalled
   } state_t;
 
   MotionController *motion;
@@ -388,9 +390,14 @@ public:
   }
 
   void entered(uint16_t state) {
+    stallClear();
     switch (state) {
     case Stopped:
       DPRINTF("Stopped\n\r");
+      motion->execute(&stopCommand);
+      break;
+    case Stalled:
+      DPRINTF("Stalled\n\r");
       motion->execute(&stopCommand);
       break;
     case Searching:
@@ -400,7 +407,7 @@ public:
     case Obstructed:
       DPRINTF("Obstructed\n\r");
       motion->execute(&stopCommand);
-      transition(Avoiding);
+      transitionAfter(Avoiding, 750);
       break;
     case Avoiding:
       DPRINTF("Avoiding\n\r");
@@ -417,6 +424,7 @@ public:
       if (obstructions->isBlocked()) {
         transition(Obstructed);
       }
+      checkForStall();
       break;
     case Obstructed:
       break;
@@ -424,7 +432,34 @@ public:
       if (!obstructions->isBlocked()) {
         transition(Stopped);
       }
+      checkForStall();
       break;
+    case Turning:
+      checkForStall();
+      break;
+    }
+  }
+
+private:
+  uint32_t previous;
+  uint32_t previousLeft;
+  uint32_t previousRight;
+
+  void stallClear() {
+    previousLeft = encoders->getLeft();
+    previous = millis();
+    previousRight = encoders->getRight();
+  }
+
+  void checkForStall() {
+    if (millis() - previous > 1000) {
+      float leftSpeed = (encoders->getLeft() - previousLeft) / 1000.0;
+      float rightSpeed = (encoders->getRight() - previousRight) / 1000.0;
+      DPRINTF("Speed: %f %f\n\r", leftSpeed, rightSpeed);
+      stallClear();
+      if (leftSpeed < 0.005 || rightSpeed < 0.005) {
+        transition(Stalled);
+      }
     }
   }
 };
