@@ -1,46 +1,54 @@
-uint32_t timer0;
-uint32_t timer1;
-uint32_t timer2;
-uint32_t d0;
+#include <Arduino.h>
+extern "C" {
+#include "usiTwiSlave.h"
+}
 
-class Blinker {
-private:
-  uint32_t previous;
-  uint32_t interval;
-  uint8_t pin;
-  uint8_t enabled;
+#define I2C_SLAVE_ADDR  0x01
 
-public:
-  Blinker(uint32_t interval, uint8_t pin) :
-    previous(0), interval(interval), pin(pin) {
+void blink(uint8_t pin, int8_t times, uint32_t onTime, uint32_t offTime) {
+  noInterrupts();
+  while (times > 0) {
+    digitalWrite(pin, HIGH);
+    delay(onTime);
+    digitalWrite(pin, LOW);
+    delay(offTime);
+    times--;
   }
+  interrupts();
+}
 
-  void begin() {
-    pinMode(pin, OUTPUT);
-  }
-
-  void service() {
-    uint32_t now = millis();
-    if (now - previous > interval) {
-      enabled = !enabled;
-      digitalWrite(pin, enabled);
-      previous = now;
-    }
-  }
-};
-
-static Blinker b0( 500, 0);
-static Blinker b1( 250, 1);
-static Blinker b2(1000, 3);
+static boolean enabled = false;
 
 void setup() {
-  b0.begin();
-  b1.begin();
-  b2.begin();
+  pinMode(0, OUTPUT);
+  pinMode(1, OUTPUT);
+  
+  usiTwiSlaveInit(I2C_SLAVE_ADDR);
+
+  digitalWrite(0, LOW);
+  digitalWrite(1, LOW);
 }
 
 void loop() {
-  b0.service();
-  b1.service();
-  b2.service();
+  if (usiTwiDataInReceiveBuffer()) {
+    digitalWrite(0, HIGH);
+    byte received = usiTwiReceiveByte();
+    digitalWrite(0, LOW);
+    if (enabled) {
+      enabled = LOW;
+    }
+    else {
+      enabled = HIGH;
+    }
+    for (byte i = 0; i < received; ++i) {
+      digitalWrite(0, HIGH);
+      delay(50);
+      digitalWrite(0, LOW);
+      delay(50);
+    }
+    usiTwiTransmitByte(received + 1);
+  }
+  digitalWrite(1, HIGH);
+  delay(100);
+  digitalWrite(1, LOW);
 }

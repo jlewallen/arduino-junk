@@ -44,6 +44,7 @@
 #define CRC_EOP 0x20 //ok it is a space...
 
 void pulse(int pin, int times);
+int avrisp();
 
 void setup() {
   Serial.begin(19200);

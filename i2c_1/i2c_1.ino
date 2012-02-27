@@ -22,20 +22,6 @@ void blink(int16_t times) {
   blink(times, 250, 250);
 }
 
-void setup() {
-  Serial.begin(9600);
-  pinMode(13, OUTPUT);
-  
-  #if defined(MASTER)
-  Wire.begin();
-  blink(2);
-  #else
-  Wire.begin(1);
-  Wire.onReceive(received);
-  blink(3);
-  #endif
-}
-
 void received(int16_t howMany) {
   while (Wire.available()) {
     char m = Wire.read();
@@ -46,23 +32,38 @@ void received(int16_t howMany) {
   }
 }
 
-void loop() {
+static byte number = 2;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(13, OUTPUT);
+  
   #if defined(MASTER)
-  Wire.beginTransmission(1);
-  Wire.write("1");
-  Wire.endTransmission();
+  Wire.begin();
   #else
-  
+  Wire.begin(1);
+  Wire.onReceive(received);
+  blink(3);
   #endif
+}
+
+void loop() {
+  digitalWrite(13, HIGH);
+  Wire.beginTransmission(1);
+  Wire.write(number);
+  Wire.endTransmission();
+  delay(100);
+  digitalWrite(13, LOW);
   delay(1000);
-  
+
+  Wire.requestFrom(0x1, 1);
+  if (Wire.available()) {
+    number = Wire.read() % 5;
+  }
+
   while (queue != NULL) {
     message_t *next = queue->next;
-    switch (queue->code) {
-      case '1':
-        blink(3, 100, 50);
-        break;
-    }
+    number = queue->code % 5;
     free(queue);
     queue = next;
   }
