@@ -8,6 +8,7 @@
 #include <Servicable.h>
 #include <Debuggable.h>
 #include <StateMachine.h>
+#include "../blink_tiny/Blink.h"
 
 volatile int16_t encodersLeftState = false;
 volatile int16_t encodersRightState = false;
@@ -361,11 +362,37 @@ public:
 
   void ready() {
     for (byte i = 0; i < 3; ++i) {
-      send(0b00101111);
+      send(BLINK_SET_LED(WHITE_MASK | PURPLE_MASK));
       delay(50);
-      send(0);
+      send(BLINK_ALL_OFF);
       delay(100);
     }
+  }
+
+  void stopped() {
+    send(BLINK_ALL_OFF);
+  }
+
+  void stalled() {
+  }
+
+  void searching() {
+    send(BLINK_ALL_OFF, BLINK_SET_LED(GREEN_MASK));
+  }
+
+  void obstructed() {
+    send(BLINK_ALL_OFF, BLINK_SET_LED(YELLOW_MASK));
+  }
+
+  void avoiding() {
+    send(BLINK_ALL_OFF, BLINK_SET_LED(RED_MASK));
+  }
+
+  void send(byte b0, byte b1) {
+    Wire.beginTransmission(LIGHT_BOARD_ADDRESS);
+    Wire.write(b0);
+    Wire.write(b1);
+    Wire.endTransmission();
   }
 
   void send(byte b) {
@@ -420,23 +447,28 @@ public:
     switch (state) {
     case Stopped:
       DPRINTF("Stopped\n\r");
+      display->stopped();
       motion->execute(&stopCommand);
       break;
     case Stalled:
       DPRINTF("Stalled\n\r");
+      display->stalled();
       motion->execute(&stopCommand);
       break;
     case Searching:
       DPRINTF("Searching\n\r");
+      display->searching();
       motion->execute(&forwardCommand);
       break;
     case Obstructed:
       DPRINTF("Obstructed\n\r");
+      display->obstructed();
       motion->execute(&stopCommand);
       transitionAfter(Avoiding, 750);
       break;
     case Avoiding:
       DPRINTF("Avoiding\n\r");
+      display->avoiding();
       motion->execute(&backwardCommand);
       break;
     }
