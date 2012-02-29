@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <printf.h>
 #include <Servo.h>
+#include <Wire.h>
 #include <Servicable.h>
 #include <Debuggable.h>
 #include <StateMachine.h>
@@ -350,6 +351,30 @@ public:
   }
 };
 
+#define LIGHT_BOARD_ADDRESS 1
+
+class Display {
+private:
+public:
+  void begin() {
+  }
+
+  void ready() {
+    for (byte i = 0; i < 3; ++i) {
+      send(0b00101111);
+      delay(50);
+      send(0);
+      delay(100);
+    }
+  }
+
+  void send(byte b) {
+    Wire.beginTransmission(LIGHT_BOARD_ADDRESS);
+    Wire.write(b);
+    Wire.endTransmission();
+  }
+};
+
 class Navigator : public Servicable, public StateMachine {
 private:
   typedef enum {
@@ -367,11 +392,12 @@ private:
   MaxSonar *sonar;
   Head *head;
   Obstructions *obstructions;
+  Display *display;
 
 public:
-  Navigator(MotionController &motion, Encoders &encoders, MaxSonar &sonar, Head &head, Obstructions &obstructions) :
+  Navigator(MotionController &motion, Encoders &encoders, MaxSonar &sonar, Head &head, Obstructions &obstructions, Display &display) :
     StateMachine(Stopped),
-    motion(&motion), encoders(&encoders), sonar(&sonar), head(&head), obstructions(&obstructions) {
+    motion(&motion), encoders(&encoders), sonar(&sonar), head(&head), obstructions(&obstructions), display(&display) {
   }
 
   void begin() {
@@ -588,16 +614,20 @@ public:
 int16_t main(void) {
 	init();
 
+  Display display;
   MotionController motionController;
   Encoders encoders;
   DigitalMaxSonar sonar(11);
   Head head;
   Obstructions obstructions(12);
   DebugController debug(head, encoders, sonar);
-  Navigator navigator(motionController, encoders, sonar, head, obstructions);
+  Navigator navigator(motionController, encoders, sonar, head, obstructions, display);
   SerialController serialController(head, motionController, debug, navigator);
   ButtonsController buttonsController(navigator);
 
+  Wire.begin();
+
+  display.begin();
   motionController.begin();
   buttonsController.begin();
   encoders.begin();
@@ -608,6 +638,7 @@ int16_t main(void) {
   debug.begin();
   navigator.begin();
   serialController.ready();
+  display.ready();
 
 	for (;;) {
     serialController.service();

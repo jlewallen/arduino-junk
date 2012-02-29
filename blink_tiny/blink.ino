@@ -1,30 +1,10 @@
 #include <Arduino.h>
+#include "Blink.h"
 extern "C" {
 #include "usiTwiSlave.h"
 }
 
 #define memzero(p, sz)  memset(p, 0, sz)
-#define RED_PIN         0
-#define GREEN_PIN       9
-#define YELLOW_PIN      10   
-#define WHITE_PIN       8
-#define PURPLE_PIN      1
-#define RGB_G_PIN       2
-#define RGB_B_PIN       3
-#define RGB_R_PIN       5
-
-#define RED_MASK       (1 << 0)
-#define YELLOW_MASK    (1 << 1)
-#define GREEN_MASK     (1 << 2)
-#define PURPLE_MASK    (1 << 3)
-#define WHITE_MASK     (1 << 4)
-
-#define SET_LED_MASK   (1 << 5)
-#define SET_RGB_MASK   (1 << 6)
-#define SET_BLINK_MASK (1 << 7)
-#define IS_SET(v, m)   (((v) & (m)) == m)
-
-#define I2C_SLAVE_ADDR  0x01
 
 typedef struct command_t_ {
   uint8_t opcode;
