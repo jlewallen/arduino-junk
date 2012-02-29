@@ -227,7 +227,7 @@ motion_command_t stopCommand = {
 };
 
 motion_command_t forwardCommand = {
-  100, 100, true, true, 0
+  80, 80, true, true, 0
 };
 
 motion_command_t backwardCommand = {
