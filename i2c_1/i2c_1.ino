@@ -32,7 +32,16 @@ void received(int16_t howMany) {
   }
 }
 
-static byte number = 2;
+static byte number = 0;
+static byte states[] = {
+  0b00000000,
+  0b00100001,
+  0b00100011,
+  0b00100111,
+  0b00101111,
+  0b00111111
+};
+
 
 void setup() {
   Serial.begin(9600);
@@ -50,12 +59,38 @@ void setup() {
 void loop() {
   digitalWrite(13, HIGH);
   Wire.beginTransmission(1);
-  Wire.write(number);
+  Wire.write(states[number]);
   Wire.endTransmission();
   delay(100);
   digitalWrite(13, LOW);
   delay(1000);
 
+  number = (number + 1) % (sizeof(states));
+  if (number == 0) {
+    Wire.beginTransmission(1);
+    Wire.write(1 << 6);
+    Wire.write((byte)100);
+    Wire.write((byte)0);
+    Wire.write((byte)0);
+    Wire.endTransmission();
+    delay(1000);
+    Wire.beginTransmission(1);
+    Wire.write(1 << 6);
+    Wire.write((byte)0);
+    Wire.write((byte)100);
+    Wire.write((byte)0);
+    Wire.endTransmission();
+    delay(1000);
+    Wire.beginTransmission(1);
+    Wire.write(1 << 6);
+    Wire.write((byte)0);
+    Wire.write((byte)0);
+    Wire.write((byte)100);
+    Wire.endTransmission();
+    delay(1000);
+  }
+
+  /*
   Wire.requestFrom(0x1, 1);
   if (Wire.available()) {
     number = Wire.read() % 5;
@@ -67,4 +102,5 @@ void loop() {
     free(queue);
     queue = next;
   }
+  */
 }

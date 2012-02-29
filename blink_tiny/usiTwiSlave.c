@@ -267,12 +267,12 @@ static volatile overflowState_t overflowState;
 
 
 static uint8_t          rxBuf[ TWI_RX_BUFFER_SIZE ];
-static volatile uint8_t rxHead;
-static volatile uint8_t rxTail;
+static volatile uint8_t rxHead = 0;
+static volatile uint8_t rxTail = 0;
 
 static uint8_t          txBuf[ TWI_TX_BUFFER_SIZE ];
-static volatile uint8_t txHead;
-static volatile uint8_t txTail;
+static volatile uint8_t txHead = 0;
+static volatile uint8_t txTail = 0;
 
 
 
