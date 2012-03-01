@@ -1,6 +1,9 @@
 #ifndef MemoryFree_h
 #define MemoryFree_h
 
+extern unsigned int __data_start;
+extern unsigned int __data_end;
+extern unsigned int __bss_start;
 extern unsigned int __bss_end;
 extern unsigned int __heap_start;
 extern void *__brkval;
