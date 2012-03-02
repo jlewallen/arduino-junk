@@ -1,9 +1,10 @@
 #ifndef SPEED_H
 #define SPEED_H
 
-#define SC_K_PRO 3         // proportional 
-#define SC_K_DRV 3         // derivative
-#define SC_MAX   100 * 256 // maximum
+#define SC_K_PRO              3         // proportional 
+#define SC_K_DRV              3         // derivative
+#define SC_MAX                100 * 256 // maximum
+#define SC_SCALE_VELOCITY(v)  (v * 20)
 
 class SpeedController : Servicable {
 private:
@@ -39,21 +40,35 @@ public:
   void service() {
     int16_t lf, rt;
 
-    lf = (leftDesired - encoders->getLeftVelocity()) * 256; 
-    leftAccumulator +=  ((lf / SC_K_PRO) + ((lf - leftLast) / SC_K_DRV));
-    leftLast = lf; 
-    
-    if (leftAccumulator > SC_MAX) leftAccumulator = SC_MAX; 
-    else if (leftAccumulator < -SC_MAX) leftAccumulator = -SC_MAX; 
+    if (leftDesired != 0) {
+      lf = (SC_SCALE_VELOCITY(leftDesired) - SC_SCALE_VELOCITY(encoders->getLeftVelocity())) * 256; 
+      leftAccumulator += ((lf / SC_K_PRO) + ((lf - leftLast) / SC_K_DRV));
+      leftLast = lf; 
+      if (leftAccumulator > SC_MAX) leftAccumulator = SC_MAX; 
+      else if (leftAccumulator < -SC_MAX) leftAccumulator = -SC_MAX; 
+    }
+    else {
+      leftAccumulator = 0;
+    }
 
-    rt = (rightDesired - encoders->getRightVelocity()) * 256; 
-    rightAccumulator += ((rt / SC_K_PRO) + ((rt - rightLast) / SC_K_DRV)); 
-    rightLast = rt; 
-    
-    if (rightAccumulator > SC_MAX) rightAccumulator = SC_MAX; 
-    else if (rightAccumulator < -SC_MAX) rightAccumulator = -SC_MAX; 
+    if (rightDesired != 0) {
+      rt = (SC_SCALE_VELOCITY(rightDesired) - SC_SCALE_VELOCITY(encoders->getRightVelocity())) * 256; 
+      rightAccumulator += ((rt / SC_K_PRO) + ((rt - rightLast) / SC_K_DRV)); 
+      rightLast = rt; 
+      if (rightAccumulator > SC_MAX) rightAccumulator = SC_MAX; 
+      else if (rightAccumulator < -SC_MAX) rightAccumulator = -SC_MAX; 
+    }
+    else {
+      rightAccumulator = 0;
+    }
 
-    // motion->control(leftAccumulator / 256, rightAccumulator / 256);
+    printf("(%d %d) - (%d %d) -> %d %d\n\r",
+           leftDesired, rightDesired,
+           encoders->getLeftVelocity(), encoders->getRightVelocity(),
+           leftAccumulator / 256, rightAccumulator / 256
+           );
+
+    motion->control(leftAccumulator / 256, rightAccumulator / 256);
   }
 
 };

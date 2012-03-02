@@ -8,7 +8,7 @@ typedef struct {
 } motion_command_t;
 
 motion_command_t stopCommand = { 0, 0, 0 };
-motion_command_t forwardCommand = { 90, 90, 0 };
+motion_command_t forwardCommand = { 100, 100, 0 };
 motion_command_t backwardCommand = { -100, -100, 0 };
 motion_command_t leftCommand = { -125, 100, 0 };
 motion_command_t rightCommand = { 100, -125, 0 };

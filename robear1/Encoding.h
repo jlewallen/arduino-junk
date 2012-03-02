@@ -36,6 +36,7 @@ private:
   int16_t rightVelocity;
   uint32_t leftTotal;
   uint32_t rightTotal;
+  uint32_t previous;
 
 public:
   Encoders(MotionController &motion) : motion(&motion) {
@@ -43,6 +44,7 @@ public:
     rightVelocity = 0;
     leftTotal = 0;
     rightTotal = 0;
+    previous = 0;
   }
 
   int16_t getLeftVelocity() {
@@ -75,14 +77,12 @@ public:
     noInterrupts();
     int16_t lastLeft = leftVelocity;
     int16_t lastRight = rightVelocity;
-
     leftVelocity = leftCounter * motion->getLeftSign();
     leftTotal += leftCounter;
     leftCounter = 0;
     rightVelocity = rightCounter * motion->getRightSign();
     rightTotal += rightCounter;
     rightCounter = 0;
-
     if (leftVelocity != lastLeft || rightVelocity != lastRight) {
       printf("l=%5d r=%5d\n\r", leftVelocity, rightVelocity);
     }

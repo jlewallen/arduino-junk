@@ -1,16 +1,17 @@
 #ifndef SONAR_H
 #define SONAR_H
 
+#define PIN 11
+
 class MaxSonar : public Servicable {
 protected:
-  uint8_t pin;
   uint32_t accumulator;
   uint32_t samples;
   uint32_t previous;
   float distance;
 
 public:
-  MaxSonar(uint8_t pin) : pin(pin) {
+  MaxSonar() {
     accumulator = 0;
     samples = 0;
   }
@@ -25,7 +26,7 @@ public:
 
 class AnalogMaxSonar : public MaxSonar {
 public:
-  AnalogMaxSonar(uint8_t pin) : MaxSonar(pin) {
+  AnalogMaxSonar() {
   }
 
   void begin() {
@@ -33,7 +34,7 @@ public:
 
   void service() {
     if (millis() - previous > 10) {
-      accumulator += analogRead(pin);
+      accumulator += analogRead(PIN);
       samples++;
       previous = millis();
     }
@@ -52,15 +53,15 @@ private:
   boolean previousValue;
 
 public:
-  DigitalMaxSonar(uint8_t pin) : MaxSonar(pin) {
+  DigitalMaxSonar() {
   }
 
   void begin() {
-    pinMode(pin, INPUT);
+    pinMode(PIN, INPUT);
   }
 
   void service() {
-    boolean value = digitalRead(pin);
+    boolean value = digitalRead(PIN);
     if (value != previousValue) {
       if (value) {
         previous = micros();

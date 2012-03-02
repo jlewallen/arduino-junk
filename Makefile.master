@@ -176,6 +176,7 @@ endif
 # C and C++ source.
 SKT_C_SRC = $(wildcard *.c)
 SKT_CXX_SRC = $(wildcard *.cpp)
+SKT_HEADERS_SRC = $(wildcard *.h)
 ifneq "$(strip $(SKT_C_SRC) $(SKT_CXX_SRC))" ""
 	SKT_C_OBJ = $(patsubst %.c,%.o,$(SKT_C_SRC))
 	SKT_CXX_OBJ = $(patsubst %.cpp,%.o,$(SKT_CXX_SRC))
@@ -215,7 +216,7 @@ clean :
 $(BUILD_DIR) :
 	$(MKDIR) $@
 
-$(SKT_PDE_OBJ) : $(SKT_PDE_SRC)
+$(SKT_PDE_OBJ) : $(SKT_PDE_SRC) $(SKT_HEADERS_SRC)
 	echo '#include <Arduino.h>' > $(BUILD_DIR)/$(SKETCH)_ino.cpp
 	echo '#include "$(SKT_PDE_SRC)"' >> $(BUILD_DIR)/$(SKETCH)_ino.cpp
 	$(LN) $(SKT_PDE_SRC) $(BUILD_DIR)/$(SKT_PDE_SRC)

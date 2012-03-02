@@ -14,34 +14,10 @@
 #include "Encoding.h"
 #include "SpeedController.h"
 #include "Sonar.h"
-#include "PanTilt.h"
+#include "Head.h"
 #include "Behavior.h"
 #include "Display.h"
-
-class Obstructions : public Servicable {
-private:
-  uint8_t pin;
-  uint8_t blocked;
-
-public:
-  Obstructions(uint8_t pin) : pin(pin), blocked(false) {
-  }
-
-  void begin() {
-    pinMode(pin, INPUT);
-  }
-
-  uint8_t isBlocked() {
-    return blocked;
-  }
-
-  void service() {
-    uint8_t blockedNow = !digitalRead(pin);
-    if (blockedNow != blocked) {
-      blocked = blockedNow;
-    }
-  }
-};
+#include "FrontInfrared.h"
 
 class DebugController : public Servicable {
 private:
@@ -84,107 +60,15 @@ public:
   }
 };
 
-class Navigator : public Servicable, public StateMachine {
-private:
-  typedef enum {
-    Stopped,
-    Waiting,
-    Searching,
-    Obstructed,
-    Avoiding,
-    Turning,
-    Stalled
-  } state_t;
-
-  MotionController *motion;
-  encoding::Encoders *encoders;
-  MaxSonar *sonar;
-  Head *head;
-  Obstructions *obstructions;
-  Display *display;
-
-public:
-  Navigator(MotionController &motion, encoding::Encoders &encoders, MaxSonar &sonar, Head &head, Obstructions &obstructions, Display &display) :
-    StateMachine(Stopped),
-    motion(&motion), encoders(&encoders), sonar(&sonar), head(&head), obstructions(&obstructions), display(&display) {
-  }
-
-  void begin() {
-  }
-
-  void service() {
-    StateMachine::service();
-  }
-  
-  void search() {
-    transitionAfter(Searching, 1000);
-  }
-
-  void stop() {
-    transition(Stopped);
-  }
-
-  void entered(uint16_t state) {
-    switch (state) {
-    case Stopped:
-      DPRINTF("Stopped\n\r");
-      display->stopped();
-      motion->execute(&stopCommand);
-      break;
-    case Stalled:
-      DPRINTF("Stalled\n\r");
-      display->stalled();
-      motion->execute(&stopCommand);
-      break;
-    case Searching:
-      DPRINTF("Searching\n\r");
-      display->searching();
-      motion->execute(&forwardCommand);
-      break;
-    case Obstructed:
-      DPRINTF("Obstructed\n\r");
-      display->obstructed();
-      motion->execute(&stopCommand);
-      transitionAfter(Avoiding, 750);
-      break;
-    case Avoiding:
-      DPRINTF("Avoiding\n\r");
-      display->avoiding();
-      motion->execute(&backwardCommand);
-      break;
-    }
-  }
-
-  void service(uint16_t state, uint32_t enteredAt) {
-    switch (state) {
-    case Stopped:
-      break;
-    case Searching:
-      if (obstructions->isBlocked()) {
-        transition(Obstructed);
-      }
-      break;
-    case Obstructed:
-      break;
-    case Avoiding:
-      if (!obstructions->isBlocked()) {
-        transition(Stopped);
-      }
-      break;
-    case Turning:
-      break;
-    }
-  }
-};
-
 uint16_t keyRanges[5] = { 30, 150, 360, 535, 760 };
 
 class ButtonsController : public Servicable {
 private:
   uint32_t previous;
   int8_t pressedPreviously;
-  Navigator *navigator;
+  MotionController *motion;
   SpeedController *speed;
+  behaviors::User *user;
 
 private:
   int8_t analogToButton(uint16_t value) {
@@ -197,12 +81,11 @@ private:
   }
 
 public:
-  ButtonsController(Navigator &navigator, SpeedController &speed) :
-    previous(0), pressedPreviously(0), navigator(&navigator), speed(&speed) {
+  ButtonsController(MotionController &motion, SpeedController &speed, behaviors::User &user) :
+    previous(0), pressedPreviously(0), motion(&motion), speed(&speed), user(&user) {
   }
 
   void begin() {
-    pinMode(13, OUTPUT);
   }
 
   void service() {
@@ -218,10 +101,10 @@ public:
   void button(uint8_t button) {
     switch (button) {
     case 0:
-      navigator->search();
+      user->toggle();
       break;
     case 1:
-      navigator->stop();
+      motion->execute(&forwardCommand, 5000);
       break;
     case 2:
       speed->control(10, 10);
@@ -239,11 +122,16 @@ private:
   Head *head;
   MotionController *motion;
   DebugController *debug;
-  Navigator *navigator;
 
 public:
-  SerialController(Head &head, MotionController &motion, DebugController &debug, Navigator &navigator) :
-    head(&head), motion(&motion), debug(&debug), navigator(&navigator) {
+  SerialController() {
+    head = NULL;
+    motion = NULL;
+    debug = NULL;
+  }
+
+  SerialController(Head &head, MotionController &motion, DebugController &debug) :
+    head(&head), motion(&motion), debug(&debug) {
   }
 
   void begin() {
@@ -290,10 +178,8 @@ public:
         debug->toggle();
         break;
       case '1':
-        navigator->search();
         break;
       case '0':
-        navigator->stop();
         break;
       }     
     }
@@ -303,50 +189,63 @@ public:
 int16_t main(void) {
 	init();
 
+  SerialController serial;
+  serial.begin();
+
+  behaviors::Bumper bumper;
+  behaviors::User user;
+
   Display display;
   MotionController motionController;
   encoding::Encoders encoders(motionController);
-  DigitalMaxSonar sonar(11);
-  Head head;
-  Obstructions obstructions(12);
-  DebugController debug(head, encoders, sonar);
-  Navigator navigator(motionController, encoders, sonar, head, obstructions, display);
   SpeedController speedController(encoders, motionController);
-  SerialController serialController(head, motionController, debug, navigator);
-  ButtonsController buttonsController(navigator, speedController);
+  ButtonsController buttons(motionController, speedController, user);
 
   Wire.begin();
 
+  bumper.begin();
+  user.begin();
+
   display.begin();
   motionController.begin();
-  buttonsController.begin();
   encoders.begin();
-  sonar.begin();
-  head.begin();
-  serialController.begin();
-  obstructions.begin();
-  debug.begin();
-  navigator.begin();
   speedController.begin();
-  serialController.ready();
+  buttons.begin();
   display.ready();
+  serial.ready();
 
-  uint32_t previous = 0;
+  uint32_t sensorHz = 0;
+  uint32_t motionHz = 0;
 
 	for (;;) {
-    if (millis() - previous > 100) {
-      previous = millis();
+    uint32_t now = millis();
+    if (now - sensorHz > (1000 / 20)) {
+      sensorHz = now;
+      buttons.service();
+      serial.service();
+    }
+    if (now - motionHz > (1000 / 5)) {
+      motionHz = now;
 
-      serialController.service();
+      bumper.service();
+      user.service();
+
+      behaviors::behavior_command_t *selected = NULL;
+      if (user.getCommand()->enabled) {
+        selected = user.getCommand();
+      }
+      if (bumper.getCommand()->enabled) {
+        selected = bumper.getCommand();
+      }
+      if (selected != NULL) {
+        int16_t left = selected->velocity + selected->rotation;
+        int16_t right = selected->velocity - selected->rotation;
+        speedController.control(left, right);
+      }
+
       encoders.service();
-      buttonsController.service();
-      sonar.service();
-      head.service();
-      obstructions.service();
-      navigator.service();
       motionController.service();
       speedController.service();
-      debug.service();
     }
 	}
 	return 0;
