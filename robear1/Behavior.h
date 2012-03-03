@@ -89,7 +89,7 @@ serviceAgain:
       }
       break;
     case Left:
-      if (millis() - changedAt > 2500) {
+      if (millis() - changedAt > 1500) {
         state = Forward;
         printf("Left -> Forward\n\r");
         changedAt = millis();
@@ -100,7 +100,7 @@ serviceAgain:
       command.velocity = -6;
       break;
     case Right:
-      if (millis() - changedAt > 2500) {
+      if (millis() - changedAt > 1500) {
         state = Forward;
         printf("Right -> Forward\n\r");
         changedAt = millis();

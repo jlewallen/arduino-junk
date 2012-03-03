@@ -75,8 +75,6 @@ public:
 
   void service() {
     noInterrupts();
-    int16_t lastLeft = leftVelocity;
-    int16_t lastRight = rightVelocity;
     leftVelocity = leftCounter * motion->getLeftSign();
     leftTotal += leftCounter;
     leftCounter = 0;
