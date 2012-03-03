@@ -34,9 +34,9 @@ private:
   MotionController *motion;
   int16_t leftVelocity;
   int16_t rightVelocity;
-  uint32_t leftTotal;
-  uint32_t rightTotal;
-  uint32_t previous;
+  int32_t leftTotal;
+  int32_t rightTotal;
+  int32_t previous;
 
 public:
   Encoders(MotionController &motion) : motion(&motion) {
@@ -55,11 +55,11 @@ public:
     return rightVelocity;
   }
 
-  uint32_t getLeftCounterTotal() {
+  int32_t getLeftCounterTotal() {
     return leftTotal;
   }
 
-  uint32_t getRightCounterTotal() {
+  int32_t getRightCounterTotal() {
     return rightTotal;
   }
 

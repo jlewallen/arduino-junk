@@ -29,6 +29,7 @@ private:
     Reverse,
     Left,
     Right,
+    Stopped,
     Forward,
   } state_t;
   
@@ -76,7 +77,7 @@ serviceAgain:
       }
       break;
     case Reverse:
-      if (millis() - changedAt > 1000) {
+      if (millis() - changedAt > 1750) {
         state = afterReverse;
         printf("Reverse -> %d\n\r", state);
         changedAt = millis();
@@ -85,33 +86,44 @@ serviceAgain:
       else {
         command.enabled = true;
         command.rotation = 0;
-        command.velocity = -8;
+        command.velocity = -5;
       }
       break;
     case Left:
-      if (millis() - changedAt > 1500) {
-        state = Forward;
+      if (millis() - changedAt > 2000) {
+        state = Stopped;
         printf("Left -> Forward\n\r");
         changedAt = millis();
         goto serviceAgain;
       }
       command.enabled = true;
       command.rotation = -6;
-      command.velocity = -6;
+      command.velocity = 0;
       break;
     case Right:
-      if (millis() - changedAt > 1500) {
-        state = Forward;
+      if (millis() - changedAt > 2000) {
+        state = Stopped;
         printf("Right -> Forward\n\r");
         changedAt = millis();
         goto serviceAgain;
       }
       command.enabled = true;
       command.rotation = 6;
-      command.velocity = -6;
+      command.velocity = 0;
       break;
-    case Forward:
+    case Stopped:
       if (millis() - changedAt > 1000) {
+        changedAt = millis();
+        state = Inactive;
+        printf("Stopped -> Inactive\n\r");
+        goto serviceAgain;
+      }
+      command.enabled = true;
+      command.rotation = 0;
+      command.velocity = 0;
+      break;
+    case Forward: // Skipping for now...
+      if (millis() - changedAt > 500) {
         changedAt = millis();
         state = Inactive;
         printf("Forward -> Inactive\n\r");
