@@ -35,6 +35,10 @@ public:
     return !digitalRead(PIN_RIGHT);
   }
 
+  uint8_t any() {
+    return !digitalRead(PIN_CENTER) || !digitalRead(PIN_LEFT) || !digitalRead(PIN_RIGHT);
+  }
+
   void service() {
   }
 };

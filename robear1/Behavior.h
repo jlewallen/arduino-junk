@@ -50,64 +50,76 @@ public:
 
   void service() {
     obstructions.service();
+
+serviceAgain:
     switch (state) {
     case Inactive:
-      if (obstructions.isCenterOrBothBlocked()) {
-        afterReverse = Left;
-        state = Reverse;
-        changedAt = millis();
-      }
-      else if (obstructions.isLeftBlocked()) {
-        afterReverse = Left;
-        state = Reverse;
-        changedAt = millis();
-      }
-      else if (obstructions.isRightBlocked()) {
-        afterReverse = Right;
-        state = Reverse;
-        changedAt = millis();
+      if (obstructions.any()) {
+        afterReverse = Inactive;
+        if (obstructions.isCenterOrBothBlocked()) {
+          afterReverse = Left;
+        }
+        else if (obstructions.isLeftBlocked()) {
+          afterReverse = Right;
+        }
+        else if (obstructions.isRightBlocked()) {
+          afterReverse = Left;
+        }
+        if (afterReverse != Inactive) {
+          state = Reverse;
+          changedAt = millis();
+          goto serviceAgain;
+        }
       }
       else {
         command.enabled = false;
       }
       break;
     case Reverse:
-      if (changedAt - millis() > 1000) {
-        changedAt = millis();
+      if (millis() - changedAt > 1000) {
         state = afterReverse;
+        printf("Reverse -> %d\n\r", state);
+        changedAt = millis();
+        goto serviceAgain;
       }
       else {
         command.enabled = true;
         command.rotation = 0;
-        command.velocity = -6;
+        command.velocity = -8;
       }
       break;
     case Left:
-      if (changedAt - millis() > 1000) {
-        changedAt = millis();
+      if (millis() - changedAt > 2500) {
         state = Forward;
+        printf("Left -> Forward\n\r");
+        changedAt = millis();
+        goto serviceAgain;
       }
       command.enabled = true;
-      command.rotation = 10;
+      command.rotation = -6;
       command.velocity = -6;
       break;
     case Right:
-      if (changedAt - millis() > 1000) {
-        changedAt = millis();
+      if (millis() - changedAt > 2500) {
         state = Forward;
+        printf("Right -> Forward\n\r");
+        changedAt = millis();
+        goto serviceAgain;
       }
       command.enabled = true;
-      command.rotation = -4;
-      command.velocity = -4;
+      command.rotation = 6;
+      command.velocity = -6;
       break;
     case Forward:
-      if (changedAt - millis() > 500) {
+      if (millis() - changedAt > 1000) {
         changedAt = millis();
         state = Inactive;
+        printf("Forward -> Inactive\n\r");
+        goto serviceAgain;
       }
       command.enabled = true;
       command.rotation = 0;
-      command.velocity = 4;
+      command.velocity = 8;
       break;
     }
   }

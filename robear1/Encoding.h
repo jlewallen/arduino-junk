@@ -83,9 +83,6 @@ public:
     rightVelocity = rightCounter * motion->getRightSign();
     rightTotal += rightCounter;
     rightCounter = 0;
-    if (leftVelocity != lastLeft || rightVelocity != lastRight) {
-      printf("l=%5d r=%5d\n\r", leftVelocity, rightVelocity);
-    }
     interrupts();
   }
 };
