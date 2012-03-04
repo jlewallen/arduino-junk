@@ -189,6 +189,9 @@ public:
 int16_t main(void) {
 	init();
 
+  pinMode(13, OUTPUT);
+  digitalWrite(13, HIGH);
+
   SerialController serial;
   serial.begin();
 

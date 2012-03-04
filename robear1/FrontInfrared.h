@@ -6,21 +6,14 @@
 #define PIN_RIGHT  11
 
 class Obstructions : public Servicable {
-private:
-  uint8_t blocked;
-
 public:
-  Obstructions() : blocked(false) {
+  Obstructions() {
   }
 
   void begin() {
     pinMode(PIN_LEFT, INPUT);
     pinMode(PIN_CENTER, INPUT);
     pinMode(PIN_RIGHT, INPUT);
-  }
-
-  uint8_t isBlocked() {
-    return blocked;
   }
 
   uint8_t isCenterOrBothBlocked() {

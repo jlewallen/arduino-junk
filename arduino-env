@@ -1,1 +1,1 @@
-export PATH=$PATH:/Developer/usr/bin
+export PATH=$PATH:/Developer/usr/bin:/Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/bin/

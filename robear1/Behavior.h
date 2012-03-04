@@ -3,6 +3,7 @@
 
 #include <Servicable.h>
 #include "FrontInfrared.h"
+#include "Bumper.h"
 
 namespace behaviors {
 
@@ -33,7 +34,7 @@ private:
     Forward,
   } state_t;
   
-  Obstructions obstructions;
+  BumperSensor sensor;
   state_t state;
   state_t afterReverse;
   uint32_t changedAt;
@@ -46,24 +47,29 @@ public:
   }
 
   void begin() {
-    obstructions.begin();
+    sensor.begin();
   }
 
   void service() {
-    obstructions.service();
+    sensor.service();
+    /*
+    command.enabled = false;
+    command.rotation = 0;
+    command.velocity = 0;
+    */
 
 serviceAgain:
     switch (state) {
     case Inactive:
-      if (obstructions.any()) {
+      if (sensor.any()) {
         afterReverse = Inactive;
-        if (obstructions.isCenterOrBothBlocked()) {
+        if (sensor.isCenterOrBothBlocked()) {
           afterReverse = Left;
         }
-        else if (obstructions.isLeftBlocked()) {
+        else if (sensor.isLeftBlocked()) {
           afterReverse = Right;
         }
-        else if (obstructions.isRightBlocked()) {
+        else if (sensor.isRightBlocked()) {
           afterReverse = Left;
         }
         if (afterReverse != Inactive) {
@@ -77,7 +83,7 @@ serviceAgain:
       }
       break;
     case Reverse:
-      if (millis() - changedAt > 1750) {
+      if (millis() - changedAt > 2500) {
         state = afterReverse;
         printf("Reverse -> %d\n\r", state);
         changedAt = millis();
@@ -90,7 +96,7 @@ serviceAgain:
       }
       break;
     case Left:
-      if (millis() - changedAt > 2000) {
+      if (millis() - changedAt > 1500) {
         state = Stopped;
         printf("Left -> Forward\n\r");
         changedAt = millis();
@@ -101,7 +107,7 @@ serviceAgain:
       command.velocity = 0;
       break;
     case Right:
-      if (millis() - changedAt > 2000) {
+      if (millis() - changedAt > 1500) {
         state = Stopped;
         printf("Right -> Forward\n\r");
         changedAt = millis();
