@@ -1,10 +1,11 @@
 #include "IMU.h"
 
 // #define IMU_LOGGING
+#define HZ_TO_MS_DELAY(hz)  (1000 / updateHz)
 
 const int16_t IMU::sensorSigns[9] = { 1, 1, 1, -1, -1, -1, 1, 1, 1 }; // x,y,z - gyro, accelerometer, magnetometer
 
-IMU::IMU() : dt(0.02), heading(0), timer(0), debuggingTimer(0), timerOld(0), counter(0) {
+IMU::IMU(uint16_t updateHz) : dt(HZ_TO_MS_DELAY(updateHz) / 1000.0), heading(0), timer(0), debuggingTimer(0), timerOld(0), counter(0), updateHz(updateHz) {
 }
 
 void IMU::initialize() {
@@ -142,28 +143,27 @@ void IMU::matrixUpdate() {
   omega = gyroVector.add(omegaI);
   omegaVector = omega.add(omegaP); // adding integrator term
 
-  float dtf = dt;
   #define OUTPUTMODE 1
   #if OUTPUTMODE == 1         
   update[0][0] = 0;
-  update[0][1] = -dtf * omegaVector[2]; // -z
-  update[0][2] =  dtf * omegaVector[1]; // y
-  update[1][0] =  dtf * omegaVector[2]; // z
+  update[0][1] = -dt * omegaVector[2]; // -z
+  update[0][2] =  dt * omegaVector[1]; // y
+  update[1][0] =  dt * omegaVector[2]; // z
   update[1][1] = 0;
-  update[1][2] = -dtf * omegaVector[0]; // -x
-  update[2][0] = -dtf * omegaVector[1]; // -y
-  update[2][1] =  dtf * omegaVector[0]; // x
+  update[1][2] = -dt * omegaVector[0]; // -x
+  update[2][0] = -dt * omegaVector[1]; // -y
+  update[2][1] =  dt * omegaVector[0]; // x
   update[2][2] = 0;
   #else
   // No drift correction...
   update[0][0] = 0;
-  update[0][1] = -dtf * gyroVector[2]; // -z
-  update[0][2] =  dtf * gyroVector[1]; // y
-  update[1][0] =  dtf * gyroVector[2]; // z
+  update[0][1] = -dt * gyroVector[2]; // -z
+  update[0][2] =  dt * gyroVector[1]; // y
+  update[1][0] =  dt * gyroVector[2]; // z
   update[1][1] = 0;
-  update[1][2] = -dtf * gyroVector[0]; // -x
-  update[2][0] = -dtf * gyroVector[1]; // -y
-  update[2][1] =  dtf * gyroVector[0]; // x
+  update[1][2] = -dt * gyroVector[0]; // -x
+  update[2][0] = -dt * gyroVector[1]; // -y
+  update[2][1] =  dt * gyroVector[0]; // x
   update[2][2] = 0;
   #endif
 
@@ -217,8 +217,7 @@ void IMU::begin() {
 }
 
 void IMU::service() {
-  // 50Mhz
-  if ((millis() - timer) >= 20) {
+  if ((millis() - timer) >= HZ_TO_MS_DELAY(updateHz)) {
     counter++;
     timerOld = timer;
     timer = millis();
@@ -243,7 +242,7 @@ void IMU::service() {
     driftCorrection();
     eulerAngles();
     #if defined(IMU_LOGGING)
-    print();
+    // print();
     #endif
   }
 }

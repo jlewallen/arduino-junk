@@ -74,6 +74,7 @@ private:
   uint32_t debuggingTimer;
   uint32_t timerOld;
   uint8_t counter;
+  uint16_t updateHz;
 
 public:
   float getHeading() { return heading; }
@@ -82,7 +83,7 @@ public:
   float getRoll() { return roll; }
 
 public:
-  IMU();
+  IMU(uint16_t updateHz);
 
 private:
   void initialize();
