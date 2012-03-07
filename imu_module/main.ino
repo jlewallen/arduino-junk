@@ -1,42 +1,164 @@
 #include <Arduino.h>
 #include <IMU.h>
+#include <WireHelpers.h>
+#include "ImuModule.h"
+#include "printf.h"
 
 #define LED_PIN 13
-
-static uint32_t previous = 0;
-static IMU imu;
 
 class Indicator {
 private:
   uint32_t toggleAt;
+  uint16_t toggles;
 
 public:
   void begin() {
     toggleAt = 0;
+    toggles = 0;
     pinMode(LED_PIN, OUTPUT);
+    blink(3);
+  }
+
+  void blink(uint16_t blinks) {
+    toggles = blinks * 2;
+    toggleAt = 0;
+    digitalWrite(LED_PIN, LOW);
+  }
+
+  void service(uint8_t hz) {
+    if (toggles > 0) {
+      if (millis() > toggleAt) {
+        toggles--;
+        digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+        toggleAt = millis() + 100;
+      }
+      return;
+    }
+    if (hz == 0) {
+      digitalWrite(LED_PIN, LOW);
+      return;
+    }
+    if (millis() > toggleAt) {
+      digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+      toggleAt = millis() + hz * 10;
+    }
+  }
+
+  void initializing() {
     digitalWrite(LED_PIN, HIGH);
   }
 
-  void service() {
-    if (millis() > toggleAt) {
-      digitalWrite(LED_PIN, !digitalRead(LED_PIN));
-      toggleAt = millis() + 250;
-    }
+  void ready() {
+    digitalWrite(LED_PIN, LOW);
+  }
+
+  void off() {
+    digitalWrite(LED_PIN, LOW);
   }
 };
+
+class Module {
+private:
+  static Module *singleton;
+  imu_configuration_t configuration;
+  Indicator indicator;
+  IMU *imu;
+
+public:
+  static void onWireReceived(int16_t howMany) {
+    singleton->received(howMany);
+  }
+
+  static void onWireRequested() {
+    singleton->reply();
+  }
+
+  void reply() {
+    indicator.blink(2);
+    imu_orientation_t orientation;
+    memzero(&orientation, sizeof(imu_orientation_t));
+    if (imu != NULL) {
+      orientation.heading = imu->getHeading();
+      orientation.yaw = imu->getYaw();
+      orientation.pitch = imu->getPitch();
+      orientation.roll = imu->getRoll();
+    }
+    Wire.write((uint8_t *)&orientation, sizeof(imu_orientation_t));
+  }
+
+  void received(int16_t howMany) {
+    if (Wire.available()) {
+      imu_command_t command;
+      if (!wireReadBlock(&command, sizeof(imu_command_t), 100)) {
+        return;
+      }
+      switch (command.opcode) {
+      case IMU_OPCODE_CONFIGURE:
+        imu_configuration_t reading;
+        if (!wireReadBlock(&reading, sizeof(imu_configuration_t), 100)) {
+          return;
+        }
+        memcpy(&configuration, &reading, sizeof(imu_configuration_t));
+        if (imu != NULL) {
+          delete imu;
+          imu = NULL;
+        }
+        break;
+      case IMU_OPCODE_READ:
+        break;
+      }
+    }
+  }
+
+  void begin() {
+    memzero(&configuration, sizeof(imu_configuration_t));
+    singleton = this;
+    imu = NULL;
+    indicator.begin();
+
+    Wire.begin(IMU_MODULE_ADDRESS);
+    Wire.onReceive(onWireReceived);
+    Wire.onRequest(onWireRequested);
+  }
+
+  void service() {
+    if (configuration.hz > 0) {
+      if (imu == NULL) {
+        indicator.initializing();
+        imu = new IMU(configuration.hz);
+        imu->begin();
+        indicator.ready();
+      }
+      imu->service();
+
+      #ifdef DEBUG
+      if (Serial.available()) {
+        if (Serial.read() == '.') {
+          imu->print();
+        }
+      }
+      #endif
+    }
+    indicator.service(configuration.hz);
+  }
+
+};
+
+Module *Module::singleton = NULL;
 
 int main(void) {
 	init();
 
-  Indicator indicator;
-  IMU imu;
+  #ifdef DEBUG
+  Serial.begin(9600);
+  printf_begin();
+  printf("IMU Module Ready\n\r");
+  #endif
 
-  indicator.begin();
-  imu.begin();
-
+  Module module;
+  module.begin();
 	for (;;) {
-    imu.service();
-    indicator.service();
+    module.service();
 	}
 	return 0;
 }

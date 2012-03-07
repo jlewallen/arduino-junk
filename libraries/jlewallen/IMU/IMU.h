@@ -12,7 +12,7 @@
 #include "Servicable.h"
 #include "Debuggable.h"
 
-#define GRAVITY      256  // 1G in the raw data coming from the accelerometer 
+#define GRAVITY      256.0  // 1G in the raw data coming from the accelerometer 
 #define TO_RAD(x)    ((x) * 0.01745329252)  // *pi/180
 #define TO_DEG(x)    ((x) * 57.2957795131)  // *180/pi
 
@@ -50,18 +50,18 @@ private:
   int16_t accelerometer[3];
   int16_t compass[3];
 
-  Vector3<float> magnetometerCorrected;
-  Vector3<float> accelVector; // Store the acceleration in a vector
-  Vector3<float> gyroVector; // Store the gyros turn rate in a vector
-  Vector3<float> omegaVector; // Corrected gyroVector data
-  Vector3<float> omegaP; // Omega Proportional correction
-  Vector3<float> omegaI; // Omega Integrator
-  Vector3<float> omega;
-  Matrix3x3<float> dcm;
-  Matrix3x3<float> update;
-  Matrix3x3<float> temporary;
-  Vector3<float> errorRollPitch; 
-  Vector3<float> errorYaw;
+  FVector3 magnetometerCorrected;
+  FVector3 accelVector; // Store the acceleration in a vector
+  FVector3 gyroVector; // Store the gyros turn rate in a vector
+  FVector3 omegaVector; // Corrected gyroVector data
+  FVector3 omegaP; // Omega Proportional correction
+  FVector3 omegaI; // Omega Integrator
+  FVector3 omega;
+  FMatrix3x3 dcm;
+  FMatrix3x3 update;
+  FMatrix3x3 temporary;
+  FVector3 errorRollPitch; 
+  FVector3 errorYaw;
   // euler angles
   float roll;
   float pitch;
@@ -98,11 +98,11 @@ private:
   void driftCorrection();
   void matrixUpdate();
   void eulerAngles();
-  void print();
 
 public:
   void begin();
   void service();
+  void print();
 };
 
 #endif

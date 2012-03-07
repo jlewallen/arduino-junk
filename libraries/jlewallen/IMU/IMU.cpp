@@ -1,23 +1,32 @@
 #include "IMU.h"
 
-// #define IMU_LOGGING
 #define HZ_TO_MS_DELAY(hz)  (1000 / updateHz)
 
 const int16_t IMU::sensorSigns[9] = { 1, 1, 1, -1, -1, -1, 1, 1, 1 }; // x,y,z - gyro, accelerometer, magnetometer
 
-IMU::IMU(uint16_t updateHz) : dt(HZ_TO_MS_DELAY(updateHz) / 1000.0), heading(0), timer(0), debuggingTimer(0), timerOld(0), counter(0), updateHz(updateHz) {
+IMU::IMU(uint16_t updateHz) :
+  roll(0),
+  pitch(0),
+  yaw(0),
+  dt(HZ_TO_MS_DELAY(updateHz) / 1000.0),
+  heading(0.0),
+  timer(0),
+  debuggingTimer(0),
+  timerOld(0),
+  counter(0),
+  updateHz(updateHz) {
 }
 
 void IMU::initialize() {
   DPRINTF("IMU: Initializing...\n\r");
   
-  ourGyro.writeReg(L3G4200D_CTRL_REG1, 0x0F); // normal power mode, all axes enabled, 100 Hz
-  ourGyro.writeReg(L3G4200D_CTRL_REG4, 0x20); // 2000 dps full scale
+  ourGyro.writeReg(L3G4200D_CTRL_REG1, 0x0F); // normal power mode, all axes enabled, 100Hz
+  ourGyro.writeReg(L3G4200D_CTRL_REG4, 0x20); // 2000dps full scale
 
   ourCompass.init();
   ourCompass.writeMagReg(LSM303_MR_REG_M, 0x00);    // continuous conversion mode
-  ourCompass.writeAccReg(LSM303_CTRL_REG1_A, 0x27); // normal power mode, all axes enabled, 50 Hz
-  ourCompass.writeAccReg(LSM303_CTRL_REG4_A, 0x30); // 8 g full scale
+  ourCompass.writeAccReg(LSM303_CTRL_REG1_A, 0x27); // normal power mode, all axes enabled, 50Hz
+  ourCompass.writeAccReg(LSM303_CTRL_REG4_A, 0x30); // 8g full scale
 }
 
 void IMU::calibrate() {
@@ -42,6 +51,8 @@ void IMU::calibrate() {
   
   dataOffset[5] -= GRAVITY * sensorSigns[5];
   delay(500);
+
+  dcm.identity();
 }
 
 void IMU::readGyro() {
@@ -78,9 +89,9 @@ void IMU::calculateHeading() {
   float sinPitch = sin(pitch);
   
   // adjust for LSM303 compass axis offsets/sensitivity differences by scaling to +/-0.5 range
-  magnetometerCorrected[0] = (float)(compass[0] - sensorSigns[6] * M_X_MIN) / (M_X_MAX - M_X_MIN) - sensorSigns[6] * 0.5;
-  magnetometerCorrected[1] = (float)(compass[1] - sensorSigns[7] * M_Y_MIN) / (M_Y_MAX - M_Y_MIN) - sensorSigns[7] * 0.5;
-  magnetometerCorrected[2] = (float)(compass[2] - sensorSigns[8] * M_Z_MIN) / (M_Z_MAX - M_Z_MIN) - sensorSigns[8] * 0.5;
+  magnetometerCorrected[0] = (float)(compass[0] - sensorSigns[6] * M_X_MIN) / (M_X_MAX - M_X_MIN) - sensorSigns[6] * 0.5f;
+  magnetometerCorrected[1] = (float)(compass[1] - sensorSigns[7] * M_Y_MIN) / (M_Y_MAX - M_Y_MIN) - sensorSigns[7] * 0.5f;
+  magnetometerCorrected[2] = (float)(compass[2] - sensorSigns[8] * M_Z_MIN) / (M_Z_MAX - M_Z_MIN) - sensorSigns[8] * 0.5f;
   
   float magneticX = magnetometerCorrected[0] * cosPitch + magnetometerCorrected[1] * sinRoll * sinPitch + magnetometerCorrected[2] * cosRoll * sinPitch;
   float magneticY = magnetometerCorrected[1] * cosRoll - magnetometerCorrected[2] * sinRoll;
@@ -107,8 +118,8 @@ void IMU::normalize() {
 
 void IMU::driftCorrection() {
   // Compensation the Roll, Pitch and Yaw drift. 
-  Vector3<float> scaledOmegaP;
-  Vector3<float> scaledOmegaI;
+  FVector3 scaledOmegaP;
+  FVector3 scaledOmegaI;
 
   // Calculate the magnitude of the accelerometer vector
   float accelMagnitude = accelVector.magnitude() / GRAVITY;
@@ -183,6 +194,17 @@ void IMU::print() {
     return;
   }
   debuggingTimer  = millis();
+
+  dcm.print(); printf("\n\r");
+  magnetometerCorrected.print(); printf("\n\r");
+  accelVector.print(); printf("\n\r");
+  gyroVector.print(); printf("\n\r");
+
+  omegaVector.print(); printf("\n\r");
+  omegaP.print(); printf("\n\r");
+  omegaI.print(); printf("\n\r");
+  omega.print(); printf("\n\r");
+
   DPRINTF("IMU:");
   DPRINTF("%10lu ", timer);
   DPRINTF("% 6.3f ", TO_DEG(roll));
@@ -197,6 +219,7 @@ void IMU::print() {
   DPRINTF("M % 6.5f ", magnetometerCorrected[0]);
   DPRINTF("% 6.5f ", magnetometerCorrected[1]);
   DPRINTF("% 6.5f ", magnetometerCorrected[2]);
+  DPRINTF("% 6.5f ", heading);
   DPRINTF("% 6.5f ", TO_DEG(heading));
   DPRINTF("\n\r");
   #endif
@@ -241,9 +264,6 @@ void IMU::service() {
     normalize();
     driftCorrection();
     eulerAngles();
-    #if defined(IMU_LOGGING)
-    // print();
-    #endif
   }
 }
 
