@@ -135,7 +135,7 @@ CXX_FLAGS = $(C_CXX_FLAGS)
 #     no os preamble, use function calls in prologues.
 # http://gcc.gnu.org/onlinedocs/gcc-4.3.5/gcc/
 # http://www.tty1.net/blog/2008-04-29-avr-gcc-optimisations_en.html
-OPT_FLAGS = -Os -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums \
+OPT_FLAGS ?= -Os -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums \
     -ffunction-sections -fdata-sections -Wl,--gc-sections,--relax \
     -fno-inline-small-functions -fno-tree-scev-cprop -fno-exceptions \
     -ffreestanding -mcall-prologues -fno-inline
@@ -246,8 +246,7 @@ $(BUILD_DIR)/%.d : %.cpp
 $(IMAGE).hex : $(ARD_AR_OBJ) $(LIB_AR_OBJ) $(SKT_AR_OBJ) $(SKT_PDE_OBJ)
 	$(CC) $(CXX_FLAGS) $(OPT_FLAGS) $(ARD_FLAGS) -L$(BUILD_DIR) $(SKT_PDE_OBJ) $(SKT_LD_FLAG) $(LIB_LD_FLAG) $(ARD_LD_FLAG) -lm \
 	    -o $(IMAGE).elf
-	$(OBJCOPY) -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load \
-	    --no-change-warnings --change-section-lma .eeprom=0 $(IMAGE).elf $(IMAGE).eep
+	$(OBJCOPY) -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma .eeprom=0 $(IMAGE).elf $(IMAGE).eep
 	$(OBJCOPY) -O ihex -R .eeprom $(IMAGE).elf $(IMAGE).hex
 	$(OBJDUMP) -h -S $(IMAGE).elf | $(CXXFILT) -t > $(IMAGE).lst
 	$(SIZE) $(IMAGE).hex
