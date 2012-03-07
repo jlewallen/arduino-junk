@@ -212,6 +212,7 @@ all : $(BUILD_DIR) $(IMAGE).hex
 
 clean :
 	$(RM) $(BUILD_DIR)
+	$(RM) screenlog.*
 
 $(BUILD_DIR) :
 	$(MKDIR) $@
