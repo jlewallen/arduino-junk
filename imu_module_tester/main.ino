@@ -61,10 +61,10 @@ int main() {
         Wire.requestFrom(IMU_MODULE_ADDRESS, sizeof(imu_orientation_t));
         imu_orientation_t orientation;
         if (wireReadBlock(&orientation, sizeof(imu_orientation_t), 1000)) {
-          printf("%f ", TO_DEG(orientation.heading));
-          printf("%f ", TO_DEG(orientation.yaw));
-          printf("%f ", TO_DEG(orientation.pitch));
-          printf("%f ", TO_DEG(orientation.roll));
+          printf("h = %f ", TO_DEG(orientation.heading));
+          printf("y = %f ", TO_DEG(orientation.yaw));
+          printf("p = %f ", TO_DEG(orientation.pitch));
+          printf("r = %f ", TO_DEG(orientation.roll));
           printf("\n\r");
         }
         Wire.endTransmission();

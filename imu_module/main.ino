@@ -105,9 +105,9 @@ public:
       imu_vector_t vector;
       memzero(&vector, sizeof(imu_vector_t));
       if (imu != NULL) {
-        vector.x = imu->getGyroVector()[0];
-        vector.y = imu->getGyroVector()[1];
-        vector.z = imu->getGyroVector()[2];
+        vector.x = imu->getAccelerometerVector()[0];
+        vector.y = imu->getAccelerometerVector()[1];
+        vector.z = imu->getAccelerometerVector()[2];
       }
       Wire.write((uint8_t *)&vector, sizeof(imu_vector_t));
       break;
