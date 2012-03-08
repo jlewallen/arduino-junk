@@ -61,6 +61,7 @@ class Module {
 private:
   static Module *singleton;
   imu_configuration_t configuration;
+  imu_command_t pending;
   Indicator indicator;
   IMU *imu;
 
@@ -75,24 +76,51 @@ public:
 
   void reply() {
     indicator.blink(2);
-    imu_orientation_t orientation;
-    memzero(&orientation, sizeof(imu_orientation_t));
-    if (imu != NULL) {
-      orientation.heading = imu->getHeading();
-      orientation.yaw = imu->getYaw();
-      orientation.pitch = imu->getPitch();
-      orientation.roll = imu->getRoll();
+
+    switch (pending.arg) {
+    case IMU_REG_ORIENTATION: {
+      imu_orientation_t orientation;
+      memzero(&orientation, sizeof(imu_orientation_t));
+      if (imu != NULL) {
+        orientation.heading = imu->getHeading();
+        orientation.yaw = imu->getYaw();
+        orientation.pitch = imu->getPitch();
+        orientation.roll = imu->getRoll();
+      }
+      Wire.write((uint8_t *)&orientation, sizeof(imu_orientation_t));
+      break;
     }
-    Wire.write((uint8_t *)&orientation, sizeof(imu_orientation_t));
+    case IMU_REG_GYRO: {
+      imu_vector_t vector;
+      memzero(&vector, sizeof(imu_vector_t));
+      if (imu != NULL) {
+        vector.x = imu->getGyroVector()[0];
+        vector.y = imu->getGyroVector()[1];
+        vector.z = imu->getGyroVector()[2];
+      }
+      Wire.write((uint8_t *)&vector, sizeof(imu_vector_t));
+      break;
+    }
+    case IMU_REG_ACCELEROMETER: {
+      imu_vector_t vector;
+      memzero(&vector, sizeof(imu_vector_t));
+      if (imu != NULL) {
+        vector.x = imu->getGyroVector()[0];
+        vector.y = imu->getGyroVector()[1];
+        vector.z = imu->getGyroVector()[2];
+      }
+      Wire.write((uint8_t *)&vector, sizeof(imu_vector_t));
+      break;
+    }
+    }
   }
 
   void received(int16_t howMany) {
     if (Wire.available()) {
-      imu_command_t command;
-      if (!wireReadBlock(&command, sizeof(imu_command_t), 100)) {
+      if (!wireReadBlock(&pending, sizeof(imu_command_t), 100)) {
         return;
       }
-      switch (command.opcode) {
+      switch (pending.opcode) {
       case IMU_OPCODE_CONFIGURE:
         imu_configuration_t reading;
         if (!wireReadBlock(&reading, sizeof(imu_configuration_t), 100)) {
@@ -103,8 +131,6 @@ public:
           delete imu;
           imu = NULL;
         }
-        break;
-      case IMU_OPCODE_READ:
         break;
       }
     }

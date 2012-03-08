@@ -4,6 +4,8 @@
 #include <WireHelpers.h>
 #include "../imu_module/ImuModule.h"
 
+#define TO_DEG(x)    ((x) * 57.2957795131)  // *180/pi
+
 void configure(imu_configuration_t *configuration) {
   imu_command_t configure;
   configure.opcode = IMU_OPCODE_CONFIGURE;
@@ -50,23 +52,60 @@ int main() {
         configuration.hz = 0;
         configure(&configuration);
         break;
-      case 'q':
-        printf("Reading %d...\n\r", sizeof(imu_orientation_t));
+      case 'q': {
         imu_command_t sending;
         sending.opcode = IMU_OPCODE_READ;
+        sending.arg = IMU_REG_ORIENTATION;
         Wire.beginTransmission(IMU_MODULE_ADDRESS);
         Wire.write((uint8_t *)&sending, sizeof(imu_command_t));
         Wire.requestFrom(IMU_MODULE_ADDRESS, sizeof(imu_orientation_t));
         imu_orientation_t orientation;
         if (wireReadBlock(&orientation, sizeof(imu_orientation_t), 1000)) {
-          printf("%f ", orientation.heading);
-          printf("%f ", orientation.yaw);
-          printf("%f ", orientation.pitch);
-          printf("%f ", orientation.roll);
+          printf("%f ", TO_DEG(orientation.heading));
+          printf("%f ", TO_DEG(orientation.yaw));
+          printf("%f ", TO_DEG(orientation.pitch));
+          printf("%f ", TO_DEG(orientation.roll));
           printf("\n\r");
         }
         Wire.endTransmission();
         break;
+      }
+      case 'w': {
+        imu_command_t sending;
+        sending.opcode = IMU_OPCODE_READ;
+        sending.arg = IMU_REG_GYRO;
+        Wire.beginTransmission(IMU_MODULE_ADDRESS);
+        Wire.write((uint8_t *)&sending, sizeof(imu_command_t));
+        Wire.requestFrom(IMU_MODULE_ADDRESS, sizeof(imu_vector_t));
+        imu_vector_t vector;
+        if (wireReadBlock(&vector, sizeof(imu_vector_t), 1000)) {
+          printf("Gyro = ");
+          printf("%f ", TO_DEG(vector.x));
+          printf("%f ", TO_DEG(vector.y));
+          printf("%f ", TO_DEG(vector.z));
+          printf("\n\r");
+        }
+        Wire.endTransmission();
+        break;
+      }
+      case 'e': {
+        imu_command_t sending;
+        sending.opcode = IMU_OPCODE_READ;
+        sending.arg = IMU_REG_ACCELEROMETER;
+        Wire.beginTransmission(IMU_MODULE_ADDRESS);
+        Wire.write((uint8_t *)&sending, sizeof(imu_command_t));
+        Wire.requestFrom(IMU_MODULE_ADDRESS, sizeof(imu_vector_t));
+        imu_vector_t vector;
+        if (wireReadBlock(&vector, sizeof(imu_vector_t), 1000)) {
+          printf("Accelerometer = ");
+          printf("%f ", TO_DEG(vector.x));
+          printf("%f ", TO_DEG(vector.y));
+          printf("%f ", TO_DEG(vector.z));
+          printf("\n\r");
+        }
+        Wire.endTransmission();
+        break;
+      }
       }
     }
   }

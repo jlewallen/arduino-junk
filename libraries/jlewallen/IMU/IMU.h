@@ -82,6 +82,9 @@ public:
   float getPitch() { return pitch; }
   float getRoll() { return roll; }
 
+  FVector3 &getAccelerometerVector() { return accelVector; }
+  FVector3 &getGyroVector() { return gyroVector; }
+
 public:
   IMU(uint16_t updateHz);
 
