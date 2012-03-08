@@ -58,6 +58,8 @@ int main() {
         sending.arg = IMU_REG_ORIENTATION;
         Wire.beginTransmission(IMU_MODULE_ADDRESS);
         Wire.write((uint8_t *)&sending, sizeof(imu_command_t));
+        Wire.endTransmission();
+        delayMicroseconds(10);
         Wire.requestFrom(IMU_MODULE_ADDRESS, sizeof(imu_orientation_t));
         imu_orientation_t orientation;
         if (wireReadBlock(&orientation, sizeof(imu_orientation_t), 1000)) {
@@ -76,6 +78,8 @@ int main() {
         sending.arg = IMU_REG_GYRO;
         Wire.beginTransmission(IMU_MODULE_ADDRESS);
         Wire.write((uint8_t *)&sending, sizeof(imu_command_t));
+        Wire.endTransmission();
+        delayMicroseconds(10);
         Wire.requestFrom(IMU_MODULE_ADDRESS, sizeof(imu_vector_t));
         imu_vector_t vector;
         if (wireReadBlock(&vector, sizeof(imu_vector_t), 1000)) {
@@ -94,6 +98,8 @@ int main() {
         sending.arg = IMU_REG_ACCELEROMETER;
         Wire.beginTransmission(IMU_MODULE_ADDRESS);
         Wire.write((uint8_t *)&sending, sizeof(imu_command_t));
+        Wire.endTransmission();
+        delayMicroseconds(10);
         Wire.requestFrom(IMU_MODULE_ADDRESS, sizeof(imu_vector_t));
         imu_vector_t vector;
         if (wireReadBlock(&vector, sizeof(imu_vector_t), 1000)) {
