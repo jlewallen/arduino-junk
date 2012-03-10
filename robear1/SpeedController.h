@@ -69,6 +69,7 @@ public:
     int16_t leftSpeed = leftAccumulator / 256;
     int16_t rightSpeed = rightAccumulator / 256;
 
+    #if defined(DEBUG_ESC)
     printf("d(%ld %ld) (%ld %ld) a(%ld %ld) last(%ld %ld) vel(%d %d) -> pwm(%d %d)\n\r",
            leftDesired, rightDesired,
            lf, rt,
@@ -76,6 +77,7 @@ public:
            leftLast, rightLast,
            encoders->getLeftVelocity(), encoders->getRightVelocity(),
            leftSpeed, rightSpeed);
+    #endif
 
     motion->control(leftSpeed, rightSpeed);
   }

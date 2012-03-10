@@ -3,6 +3,7 @@
 
 #include <Servicable.h>
 #include "FrontInfrared.h"
+#include "VirtualBumper.h"
 #include "Bumper.h"
 
 namespace behaviors {
@@ -18,12 +19,14 @@ protected:
   behavior_command_t command;
 
 public:
+  virtual ~Behavior() {
+  }
   behavior_command_t *getCommand() {
     return &command;
   }
 };
 
-class Bumper : public Behavior {
+class BumperBehavior : public Behavior {
 private:
   typedef enum {
     Inactive,
@@ -34,13 +37,13 @@ private:
     Forward,
   } state_t;
   
-  BumperSensor sensor;
+  ObstructionSensor &sensor;
   state_t state;
   state_t afterReverse;
   uint32_t changedAt;
 
 public:
-  Bumper() {
+  BumperBehavior(ObstructionSensor &sensor) : sensor(sensor) {
     state = Inactive;
     afterReverse = Inactive;
     changedAt = 0;
@@ -75,6 +78,7 @@ serviceAgain:
         if (afterReverse != Inactive) {
           state = Reverse;
           changedAt = millis();
+          printf("Inactive -> Reverse\n\r");
           goto serviceAgain;
         }
       }
@@ -143,9 +147,9 @@ serviceAgain:
   }
 };
 
-class User : public Behavior {
+class UserBehavior : public Behavior {
 public:
-  User() {
+  UserBehavior() {
     command.enabled = true;
     command.rotation = 0;
     command.velocity = 0;

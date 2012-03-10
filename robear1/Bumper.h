@@ -4,7 +4,9 @@
 #define BUMPER_PIN_RIGHT  12
 #define BUMPER_PIN_LEFT   11
 
-class BumperSensor : public Servicable {
+#include "ObstructionSensor.h"
+
+class BumperSensor : public ObstructionSensor {
 private:
 public:
   BumperSensor() {
@@ -27,28 +29,7 @@ public:
     return !digitalRead(BUMPER_PIN_RIGHT);
   }
 
-  uint8_t any() {
-    return isCenterOrBothBlocked() || isLeftBlocked() || isRightBlocked();
-  }
-
   void service() {
-    /*
-    printf("LEFT = ");
-    if (digitalRead(BUMPER_PIN_LEFT)) {
-      printf("1");
-    }
-    else {
-      printf("0");
-    }
-    printf(" RIGHT = ");
-    if (digitalRead(BUMPER_PIN_RIGHT)) {
-      printf("1");
-    }
-    else {
-      printf("0");
-    }
-    printf("\n\r");
-    */
   }
 };
 

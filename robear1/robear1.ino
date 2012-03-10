@@ -8,7 +8,7 @@
 #include <Servicable.h>
 #include <Debuggable.h>
 #include <StateMachine.h>
-#include "../blink_tiny/Blink.h"
+#include "../blink_module/Blink.h"
 
 #include "Motion.h"
 #include "Encoding.h"
@@ -19,47 +19,6 @@
 #include "Display.h"
 #include "FrontInfrared.h"
 
-class DebugController : public Servicable {
-private:
-  Head *head;
-  encoding::Encoders *encoders;
-  MaxSonar *sonar;
-  boolean enabled;
-  uint32_t previous;
-
-public:
-  DebugController(Head &head, encoding::Encoders &encoders, MaxSonar &sonar) :
-    head(&head), encoders(&encoders), sonar(&sonar), enabled(false), previous(0) {
-  }
-
-  void begin() {
-  }
-
-  void service() {
-    #ifdef DEBUG
-    if (!enabled) {
-      return;
-    }
-    if (millis() - previous > 100) {
-      printf("s=%7.3f l=%5d r=%5d l=%lu r=%lu\n\r",
-             sonar->getDistance(),
-             encoders->getLeftVelocity(),
-             encoders->getRightVelocity(),
-             encoders->getLeftCounterTotal(),
-             encoders->getRightCounterTotal()
-             );
-      previous = millis();
-    }
-    #endif
-  }
-
-  void toggle() {
-    #ifdef DEBUG
-    enabled = !enabled;
-    #endif
-  }
-};
-
 uint16_t keyRanges[5] = { 30, 150, 360, 535, 760 };
 
 class ButtonsController : public Servicable {
@@ -68,7 +27,7 @@ private:
   int8_t pressedPreviously;
   MotionController *motion;
   SpeedController *speed;
-  behaviors::User *user;
+  behaviors::UserBehavior *userBehavior;
 
 private:
   int8_t analogToButton(uint16_t value) {
@@ -81,8 +40,8 @@ private:
   }
 
 public:
-  ButtonsController(MotionController &motion, SpeedController &speed, behaviors::User &user) :
-    previous(0), pressedPreviously(0), motion(&motion), speed(&speed), user(&user) {
+  ButtonsController(MotionController &motion, SpeedController &speed, behaviors::UserBehavior &userBehavior) :
+    previous(0), pressedPreviously(0), motion(&motion), speed(&speed), userBehavior(&userBehavior) {
   }
 
   void begin() {
@@ -101,7 +60,7 @@ public:
   void button(uint8_t button) {
     switch (button) {
     case 0:
-      user->toggle();
+      userBehavior->toggle();
       break;
     case 1:
       motion->execute(&forwardCommand, 5000);
@@ -119,19 +78,12 @@ public:
 
 class SerialController : public Servicable {
 private:
-  Head *head;
   MotionController *motion;
-  DebugController *debug;
+  behaviors::UserBehavior *userBehavior;
 
 public:
-  SerialController() {
-    head = NULL;
-    motion = NULL;
-    debug = NULL;
-  }
-
-  SerialController(Head &head, MotionController &motion, DebugController &debug) :
-    head(&head), motion(&motion), debug(&debug) {
+  SerialController(MotionController &motion, behaviors::UserBehavior &userBehavior) :
+    motion(&motion), userBehavior(&userBehavior) {
   }
 
   void begin() {
@@ -160,29 +112,53 @@ public:
         break;          
       case '.':
         motion->execute(&stopCommand);
-        head->lookStraight();
         break;          
       case 'j':
-        head->lookLeft();
         break;
       case 'k':
-        head->lookRight();
         break;
       case 'm':
-        head->lookDown();
         break;
       case 'n':
-        head->lookUp();
         break;
       case 'v':
-        debug->toggle();
         break;
       case '1':
         break;
       case '0':
+        userBehavior->toggle();
         break;
       }     
     }
+  }
+};
+
+class VirtualAndPhysicalBumperSensor : public ObstructionSensor {
+private:
+  VirtualBumperSensor virtualSensor;
+  BumperSensor physicalSensor;
+
+public:
+  void begin() {
+    physicalSensor.begin();
+    virtualSensor.begin();
+  }
+
+  void service() {
+    physicalSensor.service();
+    virtualSensor.service();
+  }
+
+  uint8_t isCenterOrBothBlocked() {
+    return physicalSensor.isCenterOrBothBlocked() || virtualSensor.isBlocked();
+  }
+  
+  uint8_t isLeftBlocked() {
+    return physicalSensor.isLeftBlocked();
+  }
+  
+  uint8_t isRightBlocked() {
+    return physicalSensor.isRightBlocked();
   }
 };
 
@@ -192,23 +168,21 @@ int16_t main(void) {
   pinMode(13, OUTPUT);
   digitalWrite(13, HIGH);
 
-  SerialController serial;
-  serial.begin();
+  Wire.begin();
 
-  behaviors::Bumper bumper;
-  behaviors::User user;
-
+  VirtualAndPhysicalBumperSensor obstructionSensor;
+  behaviors::BumperBehavior bumperBehavior(obstructionSensor);
+  behaviors::UserBehavior userBehavior;
   Display display;
   MotionController motionController;
   encoding::Encoders encoders(motionController);
   SpeedController speedController(encoders, motionController);
-  ButtonsController buttons(motionController, speedController, user);
+  ButtonsController buttons(motionController, speedController, userBehavior);
+  SerialController serial(motionController, userBehavior);
 
-  Wire.begin();
-
-  bumper.begin();
-  user.begin();
-
+  serial.begin();
+  bumperBehavior.begin();
+  userBehavior.begin();
   display.begin();
   motionController.begin();
   encoders.begin();
@@ -222,23 +196,24 @@ int16_t main(void) {
 
 	for (;;) {
     uint32_t now = millis();
-    if (now - sensorHz > (1000 / 20)) {
+
+    if (now - sensorHz > 5) {
       sensorHz = now;
       buttons.service();
       serial.service();
+      bumperBehavior.service();
+      userBehavior.service();
     }
+
     if (now - motionHz > (1000 / 5)) {
       motionHz = now;
 
-      bumper.service();
-      user.service();
-
       behaviors::behavior_command_t *selected = NULL;
-      if (user.getCommand()->enabled) {
-        selected = user.getCommand();
+      if (userBehavior.getCommand()->enabled) {
+        selected = userBehavior.getCommand();
       }
-      if (bumper.getCommand()->enabled) {
-        selected = bumper.getCommand();
+      if (bumperBehavior.getCommand()->enabled) {
+        selected = bumperBehavior.getCommand();
       }
       if (selected != NULL) {
         int16_t left = selected->velocity + selected->rotation;
