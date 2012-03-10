@@ -2,9 +2,10 @@
 #include <Wire.h>
 #include <printf.h>
 #include <WireHelpers.h>
+#include <Common.h>
 #include "../imu_module/ImuModule.h"
 
-#define TO_DEG(x)    ((x) * 57.2957795131)  // *180/pi
+#define TO_DEG(x)                       ((x) * 57.2957795131)  // *180/pi
 
 void configure(imu_configuration_t *configuration) {
   imu_command_t configure;
@@ -19,17 +20,20 @@ int main() {
   init();
 
   Wire.begin(0xee);
-  Serial.begin(9600);
+  Serial.begin(19200);
   printf_begin();
 
-  delay(500);
-
+  Serial.println("Starting...");
+  VirtualBumper bumper;
+  bumper.begin();
   Serial.println("Ready...");
 
   imu_configuration_t configuration;
   configuration.hz = 0;
 
   for (;;) {
+    bumper.service();
+
     if (Serial.available()) {
       switch (Serial.read()) {
       case 'c':
@@ -69,7 +73,6 @@ int main() {
           printf("r = %f ", TO_DEG(orientation.roll));
           printf("\n\r");
         }
-        Wire.endTransmission();
         break;
       }
       case 'w': {
@@ -89,7 +92,6 @@ int main() {
           printf("%f ", TO_DEG(vector.z));
           printf("\n\r");
         }
-        Wire.endTransmission();
         break;
       }
       case 'e': {
@@ -109,7 +111,6 @@ int main() {
           printf("%f ", TO_DEG(vector.z));
           printf("\n\r");
         }
-        Wire.endTransmission();
         break;
       }
       }

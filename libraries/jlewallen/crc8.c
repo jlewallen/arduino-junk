@@ -1,6 +1,6 @@
 #include "crc8.h"
 
-// x^8 + x^2 + x + 1
+// CRC-8-CCIT x^8 + x^2 + x + 1
 
 #define POLYNOMIAL    (0x1070U << 3) 
 

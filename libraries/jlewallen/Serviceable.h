@@ -1,6 +1,3 @@
-/**
- *
- */
 #ifndef SERVICEABLE_H
 #define SERVICEABLE_H
 
