@@ -78,7 +78,7 @@ serviceAgain:
         if (afterReverse != Inactive) {
           state = Reverse;
           changedAt = millis();
-          printf("Inactive -> Reverse\n\r");
+          printlnf("Inactive -> Reverse");
           goto serviceAgain;
         }
       }
@@ -89,7 +89,7 @@ serviceAgain:
     case Reverse:
       if (millis() - changedAt > 2500) {
         state = afterReverse;
-        printf("Reverse -> %d\n\r", state);
+        printlnf("Reverse -> %d", state);
         changedAt = millis();
         goto serviceAgain;
       }
@@ -102,7 +102,7 @@ serviceAgain:
     case Left:
       if (millis() - changedAt > 1500) {
         state = Stopped;
-        printf("Left -> Forward\n\r");
+        printlnf("Left -> Forward");
         changedAt = millis();
         goto serviceAgain;
       }
