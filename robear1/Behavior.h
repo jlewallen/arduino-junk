@@ -41,6 +41,7 @@ private:
   state_t state;
   state_t afterReverse;
   uint32_t changedAt;
+  uint8_t justChanged;
 
 public:
   BumperBehavior(ObstructionSensor &sensor) : sensor(sensor) {
@@ -49,17 +50,21 @@ public:
     changedAt = 0;
   }
 
+  uint8_t didJustChange() {
+    return justChanged;
+  }
+
+  uint8_t didJustBump() {
+    return didJustChange() && state == Reverse;
+  }
+
   void begin() {
     sensor.begin();
   }
 
   void service() {
     sensor.service();
-    /*
-    command.enabled = false;
-    command.rotation = 0;
-    command.velocity = 0;
-    */
+    justChanged = false;
 
 serviceAgain:
     switch (state) {
@@ -77,6 +82,7 @@ serviceAgain:
         }
         if (afterReverse != Inactive) {
           state = Reverse;
+          justChanged = true;
           changedAt = millis();
           printlnf("Inactive -> Reverse");
           goto serviceAgain;
@@ -89,6 +95,7 @@ serviceAgain:
     case Reverse:
       if (millis() - changedAt > 2500) {
         state = afterReverse;
+        justChanged = true;
         printlnf("Reverse -> %d", state);
         changedAt = millis();
         goto serviceAgain;
@@ -102,6 +109,7 @@ serviceAgain:
     case Left:
       if (millis() - changedAt > 1500) {
         state = Stopped;
+        justChanged = true;
         printlnf("Left -> Forward");
         changedAt = millis();
         goto serviceAgain;
@@ -113,7 +121,8 @@ serviceAgain:
     case Right:
       if (millis() - changedAt > 1500) {
         state = Stopped;
-        printf("Right -> Forward\n\r");
+        justChanged = true;
+        printlnf("Right -> Forward");
         changedAt = millis();
         goto serviceAgain;
       }
@@ -125,7 +134,8 @@ serviceAgain:
       if (millis() - changedAt > 1000) {
         changedAt = millis();
         state = Inactive;
-        printf("Stopped -> Inactive\n\r");
+        justChanged = true;
+        printlnf("Stopped -> Inactive");
         goto serviceAgain;
       }
       command.enabled = true;
@@ -134,9 +144,10 @@ serviceAgain:
       break;
     case Forward: // Skipping for now...
       if (millis() - changedAt > 500) {
-        changedAt = millis();
         state = Inactive;
-        printf("Forward -> Inactive\n\r");
+        justChanged = true;
+        printlnf("Forward -> Inactive");
+        changedAt = millis();
         goto serviceAgain;
       }
       command.enabled = true;
@@ -169,6 +180,69 @@ public:
       command.velocity = 5;
     }
   }
+};
+
+#define LMB_INTERVAL (1000 / 20)
+#define LMB_DELTA     50
+
+class LocalMinimumBehavior : public Behavior {
+private:
+  typedef enum {
+    Inactive,
+    Turning
+  } state_t;
+  uint16_t counter;
+  uint32_t previous;
+  state_t state;
+  BumperBehavior &bumper;
+
+public:
+  LocalMinimumBehavior(BumperBehavior &bumper) : counter(LMB_DELTA), previous(0), state(Inactive), bumper(bumper) {
+    command.enabled = true;
+    command.rotation = 0;
+    command.velocity = 0;
+  }
+
+  void begin() {
+  }
+
+  void service() {
+    if (bumper.didJustBump()) {
+      counter += LMB_DELTA;
+      printlnf("LMB: Bump = %d", counter);
+    }
+    else if (counter > 0) {
+      if (millis() - previous > LMB_INTERVAL) {
+        counter--;
+        if (counter == 0) {
+          printlnf("LMB: Zero");
+        }
+        previous = millis();
+      }
+    }
+    switch (state) {
+    case Inactive:
+      if (counter > LMB_DELTA * 5) {
+        state = Turning;
+        printlnf("LMB: Turning %d", counter);
+        previous = millis();
+      }
+      command.enabled = false;
+      command.rotation = 0;
+      command.velocity = 0;
+      break;
+    case Turning:
+      if (millis() - previous > 4000) {
+        state = Inactive;
+        counter = 0;
+      }
+      command.enabled = true;
+      command.rotation = -5;
+      command.velocity = 0;
+      break;
+    }
+  }
+
 };
 
 }

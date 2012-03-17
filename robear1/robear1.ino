@@ -171,8 +171,9 @@ int16_t main(void) {
   Wire.begin();
 
   VirtualAndPhysicalBumperSensor obstructionSensor;
-  behaviors::BumperBehavior bumperBehavior(obstructionSensor);
   behaviors::UserBehavior userBehavior;
+  behaviors::BumperBehavior bumperBehavior(obstructionSensor);
+  behaviors::LocalMinimumBehavior localMinimumBehavior(bumperBehavior);
   Display display;
   MotionController motionController;
   encoding::Encoders encoders(motionController);
@@ -183,6 +184,7 @@ int16_t main(void) {
   serial.begin();
   bumperBehavior.begin();
   userBehavior.begin();
+  localMinimumBehavior.begin();
   display.begin();
   motionController.begin();
   encoders.begin();
@@ -201,8 +203,9 @@ int16_t main(void) {
       sensorHz = now;
       buttons.service();
       serial.service();
-      bumperBehavior.service();
       userBehavior.service();
+      bumperBehavior.service();
+      localMinimumBehavior.service();
     }
 
     if (now - motionHz > (1000 / 5)) {
@@ -211,6 +214,9 @@ int16_t main(void) {
       behaviors::behavior_command_t *selected = NULL;
       if (userBehavior.getCommand()->enabled) {
         selected = userBehavior.getCommand();
+      }
+      if (localMinimumBehavior.getCommand()->enabled) {
+        selected = localMinimumBehavior.getCommand();
       }
       if (bumperBehavior.getCommand()->enabled) {
         selected = bumperBehavior.getCommand();
