@@ -21,7 +21,7 @@
 #define SET_BLINK_MASK    (1 << 7)
 #define IS_SET(v, m)      (((v) & (m)) == m)
 
-#define I2C_SLAVE_ADDR     0x01
+#define I2C_SLAVE_ADDR     0x21
 
 #define BLINK_SET_LED(p)   ((p) | SET_LED_MASK)
 #define BLINK_ALL_ON       0xff
