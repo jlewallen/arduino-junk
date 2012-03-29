@@ -76,8 +76,8 @@ PORT ?= $(wildcard /dev/tty.usb*)
 BOARD ?= atmega328
 
 # Default libraries/Includes
-INC_DIRS = $(addprefix $(ARD_HOME)/libraries/, $(SYSTEM_LIBS)) $(addprefix $(USER_HOME)/libraries/, $(USER_LIBS))
-LIB_DIRS = $(addprefix $(ARD_HOME)/libraries/, $(SYSTEM_LIBS)) $(addprefix $(USER_HOME)/libraries/, $(USER_LIBS))
+INC_DIRS += $(addprefix $(ARD_HOME)/libraries/, $(SYSTEM_LIBS)) $(addprefix $(USER_HOME)/libraries/, $(USER_LIBS))
+LIB_DIRS += $(addprefix $(ARD_HOME)/libraries/, $(SYSTEM_LIBS)) $(addprefix $(USER_HOME)/libraries/, $(USER_LIBS))
 
 ### Nothing below here should require editing. ###
 
@@ -142,7 +142,7 @@ OPT_FLAGS ?= -Os -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enum
 
 # Build parameters.
 IMAGE = $(BUILD_DIR)/$(SKETCH)
-ARD_C_SRC = $(wildcard $(ARD_SRC_DIR)/*.c)
+ARD_C_SRC += $(wildcard $(ARD_SRC_DIR)/*.c)
 ARD_CXX_SRC = $(wildcard $(ARD_SRC_DIR)/*.cpp)
 ARD_C_OBJ = $(patsubst %.c,%.o,$(notdir $(ARD_C_SRC)))
 ARD_CXX_OBJ = $(patsubst %.cpp,%.o,$(notdir $(ARD_CXX_SRC)))
